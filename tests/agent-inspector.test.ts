@@ -43,3 +43,19 @@ test("agent inspector escapes metadata and rejects unknown agent IDs", async () 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("agent inspector filters history by agent and current job without rendering payloads", () => {
+  const entries = [
+    { sequence: 1, timestamp: "2026-11-14T00:00:00.000Z", jobId: "demo", kind: "agent.completed" as const, agentId: "mapping", elapsedMs: 12 },
+    { sequence: 2, timestamp: "2026-11-14T00:00:01.000Z", jobId: "demo", kind: "agent.completed" as const, agentId: "quality", elapsedMs: 15 },
+    { sequence: 3, timestamp: "2026-11-14T00:00:02.000Z", jobId: "other", kind: "agent.reused" as const, agentId: "mapping", elapsedMs: 20 },
+  ];
+  const html = renderAgentInspector("mapping", [], { status: "completed", jobId: "demo" }, entries);
+  assert.ok(html);
+  assert.match(html, /Histórico deste agente/);
+  assert.match(html, /agent.completed/);
+  assert.match(html, /agents\/history\/view\?id=demo/);
+  assert.doesNotMatch(html, /agent.reused/);
+  assert.doesNotMatch(html, /quality<\/td>/);
+  assert.doesNotMatch(html, /2026-11-14T00:00:02/);
+});
