@@ -6,3 +6,6 @@ coverage/
 !.env.example
 local-input/
 local-output/
+
+# Local Autopilot state (may contain page data)
+.local-maestro/
