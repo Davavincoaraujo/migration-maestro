@@ -13,7 +13,8 @@
     "review": "tsx src/cli-review.ts",
     "dashboard": "tsx src/cli-dashboard.ts",
     "analytics": "tsx src/cli-analytics.ts",
-    "analytics:execute": "tsx src/cli-analytics-execute.ts"
+    "analytics:execute": "tsx src/cli-analytics-execute.ts",
+    "ue:local": "tsx src/cli-ue-local.ts"
   },
   "engines": {
     "node": ">=20"
