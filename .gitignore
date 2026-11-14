@@ -9,3 +9,7 @@ local-output/
 
 # Local Autopilot state (may contain page data)
 .local-maestro/
+
+# Local requirement examples may contain internal business specifications
+requirements.local.json
+*.local.requirements.json
