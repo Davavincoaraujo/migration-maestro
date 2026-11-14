@@ -1,3 +1,4 @@
+import { renderAgentInspector } from "./agent-inspector.js";
 import { renderDiagramsPage, type DiagramKind } from "./migration-diagrams.js";
 import { renderAgentGraph, type AgentVisualState } from "./agent-graph-html.js";
 import { createSyntheticAgentHandlers, executeLocalAgentGraph } from "../orchestration/local-agent-executor.js";
@@ -75,7 +76,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -189,6 +190,13 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.writeHead(303, { Location: "/", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
           res.end(); return;
         } finally { busy = false; }
+      }
+      if (requestUrl.pathname === "/agents/inspect") {
+        if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
+        const id = requestUrl.searchParams.get("id") ?? "";
+        const html = renderAgentInspector(id, agentStates, agentRun);
+        if (!html) { respond(res, 404, "Unknown agent", "text/plain; charset=utf-8"); return; }
+        respond(res, 200, html); return;
       }
       if (requestUrl.pathname === "/diagrams") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
