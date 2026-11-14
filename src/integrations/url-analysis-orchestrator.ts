@@ -11,7 +11,9 @@ export function classifyAnalystToolError(content: unknown): string {
   const item = block as { type?: unknown; text?: unknown };
   return item.type === "text" && typeof item.text === "string" ? item.text.slice(0, 3000) : "";
  }).join(" ").toLowerCase();
- if (/playwright|chromium|browser executable|browser.*install/.test(text)) return "ANALYST_BROWSER_UNAVAILABLE";
+ if (/executable doesn't exist|browser executable.*(not found|missing)|please run.*playwright install|browser.*not installed/.test(text)) return "ANALYST_BROWSER_BINARY_MISSING";
+ if (/browser.*(failed to launch|launch failed)|failed to launch.*browser|target page, context or browser has been closed/.test(text)) return "ANALYST_BROWSER_LAUNCH_FAILED";
+ if (/playwright|chromium|browser executable|browser.*install/.test(text)) return "ANALYST_BROWSER_RELATED_ERROR";
  if (/timeout|timed out|tempo esgotado/.test(text)) return "ANALYST_TARGET_TIMEOUT";
  if (/403|401|forbidden|unauthorized|access denied|acesso negado/.test(text)) return "ANALYST_TARGET_ACCESS_DENIED";
  if (/404|not found|não encontrad/.test(text)) return "ANALYST_TARGET_NOT_FOUND";
