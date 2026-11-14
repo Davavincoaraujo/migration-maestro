@@ -54,9 +54,17 @@ export async function startReviewServer(directory: string, port = 4177) {
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
-        const validOrigin = req.headers.origin === origin || (req.headers.origin === undefined && req.headers["sec-fetch-site"] === "same-origin");
-        if (req.url !== "/review" || !validOrigin || !/^application\/x-www-form-urlencoded(?:\s*;\s*charset\s*=\s*utf-8)?$/i.test(req.headers["content-type"] ?? "")) {
-          respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
+        // Browser form navigations can omit Origin/Fetch Metadata in embedded webviews.
+        // An explicit foreign Origin or cross-site Fetch Metadata is always rejected.
+        const requestOrigin = req.headers.origin;
+        const fetchSite = req.headers["sec-fetch-site"];
+        if (req.url !== "/review" ||
+            (requestOrigin !== undefined && requestOrigin !== origin && requestOrigin !== "null") ||
+            (fetchSite !== undefined && fetchSite !== "same-origin" && fetchSite !== "none")) {
+          respond(res, 403, "Forbidden: request origin", "text/plain; charset=utf-8"); return;
+        }
+        if (!/^application\\/x-www-form-urlencoded(?:\\s*;\\s*charset\\s*=\\s*utf-8)?$/i.test(req.headers["content-type"] ?? "")) {
+          respond(res, 415, "Unsupported form content type", "text/plain; charset=utf-8"); return;
         }
         if (busy) { respond(res, 409, "Review in progress", "text/plain; charset=utf-8"); return; }
         busy = true;
@@ -65,7 +73,7 @@ export async function startReviewServer(directory: string, port = 4177) {
           const keys = ["csrf", "jobId", "digest", "reviewer", "decision"];
           if ([...params.keys()].some(k => !keys.includes(k)) || keys.some(k => params.getAll(k).length !== 1) ||
               !secureEqual(params.get("csrf") ?? "", csrf)) {
-            respond(res, 403, "Invalid review request", "text/plain; charset=utf-8"); return;
+            respond(res, 403, "Forbidden: invalid form token or fields", "text/plain; charset=utf-8"); return;
           }
           const jobId = params.get("jobId") ?? "";
           const reviewer = params.get("reviewer") ?? "";
