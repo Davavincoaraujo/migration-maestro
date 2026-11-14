@@ -16,15 +16,25 @@ export function renderReviewDashboard(report: WorkbenchReport, ledger: ReviewLed
   const rows = report.jobs.map(job => {
     const decision = ledger.entries.find(e => e.jobId === job.id);
     const status = decision ? decision.decision + " by " + decision.reviewer : job.status;
+    const detailLink = `<a href="/job?id=${encodeURIComponent(job.id)}">Detalhes</a>`;
     let form = "";
     if (job.status === "review-required" && !decision && !job.findings.length) {
       const digest = reviewDigest(report, job.id);
       form = `<form method="post" action="/review"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="jobId" value="${htmlEscape(job.id)}"><input type="hidden" name="digest" value="${digest}"><label>Revisor <input name="reviewer" required maxlength="80" pattern="[A-Za-z0-9_-]{1,80}" autocomplete="off"></label><button name="decision" value="approved">Aprovar plano</button><button name="decision" value="rejected">Rejeitar</button></form>`;
     }
-    return `<tr><td>${htmlEscape(job.id)}</td><td>${htmlEscape(status)}</td><td>${job.componentCount}</td><td>${htmlEscape(job.findings.join(", ") || "Nenhuma")}</td><td>${form || "Somente leitura"}</td></tr>`;
+    return `<tr><td>${htmlEscape(job.id)}</td><td>${htmlEscape(status)}</td><td>${job.componentCount}</td><td>${htmlEscape(job.findings.join(", ") || "Nenhuma")}</td><td>${form || "Somente leitura"}</td><td>${detailLink}</td></tr>`;
   }).join("");
   const history = ledger.entries.map(e => `<li>${htmlEscape(e.jobId)} — ${htmlEscape(e.decision)} por ${htmlEscape(e.reviewer)} em ${htmlEscape(e.decidedAt)}</li>`).join("");
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Migration Maestro — Revisão local</title><style>body{font:16px system-ui,sans-serif;max-width:1150px;margin:3rem auto;padding:0 1rem;color:#152432}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ddd;padding:12px;text-align:left;vertical-align:top}th{background:#eef2f6}form{display:flex;gap:8px;flex-wrap:wrap}button,input{padding:8px}button{cursor:pointer}aside{padding:12px;background:#f4f6f9}small{color:#526273}</style></head><body><h1>Migration Maestro</h1><aside>Revisão humana local de planos sintéticos. Aprovar não publica no AEM e não concede permissão de escrita.</aside>${notice ? `<p role="status">${htmlEscape(notice)}</p>` : ""}<h2>Jobs (${report.summary.total})</h2><table><thead><tr><th>Job</th><th>Status</th><th>Componentes</th><th>Pendências</th><th>Decisão</th></tr></thead><tbody>${rows}</tbody></table><h2>Histórico</h2><ul>${history || "<li>Nenhuma decisão registrada</li>"}</ul><small>Etapas executadas: ${report.metrics.stageExecutions}; checkpoints reutilizados: ${report.metrics.reusedCheckpoints}. Servidor restrito ao loopback, sem integrações corporativas.</small></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="10"><title>Migration Maestro — Revisão local</title><style>body{font:16px system-ui,sans-serif;max-width:1150px;margin:3rem auto;padding:0 1rem;color:#152432}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ddd;padding:12px;text-align:left;vertical-align:top}th{background:#eef2f6}form{display:flex;gap:8px;flex-wrap:wrap}button,input{padding:8px}button{cursor:pointer}aside{padding:12px;background:#f4f6f9}small{color:#526273}</style></head><body><h1>Migration Maestro</h1><aside>Revisão humana local de planos sintéticos. Aprovar não publica no AEM e não concede permissão de escrita.</aside>${notice ? `<p role="status">${htmlEscape(notice)}</p>` : ""}<h2>Jobs (${report.summary.total})</h2><table><thead><tr><th>Job</th><th>Status</th><th>Componentes</th><th>Pendências</th><th>Decisão</th><th>Inspeção</th></tr></thead><tbody>${rows}</tbody></table><h2>Histórico</h2><ul>${history || "<li>Nenhuma decisão registrada</li>"}</ul><small>Etapas executadas: ${report.metrics.stageExecutions}; checkpoints reutilizados: ${report.metrics.reusedCheckpoints}. Servidor restrito ao loopback, sem integrações corporativas.</small></body></html>`;
+}
+/** Read-only inspector uses only sanitized report fields, never raw source content. */
+export function renderJobInspector(report: WorkbenchReport, ledger: ReviewLedger, id: string): string {
+  const job = report.jobs.find(item => item.id === id);
+  if (!job) throw new Error("Unknown job");
+  const entry = ledger.entries.find(item => item.jobId === id);
+  const stages = job.stages.map((stage, index) => `<li>Etapa ${index + 1}: ${htmlEscape(stage)} — concluída</li>`).join("");
+  const findings = job.findings.map(finding => `<li>${htmlEscape(finding)}</li>`).join("");
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="10"><title>Job ${htmlEscape(id)} — Migration Maestro</title><style>body{font:16px system-ui,sans-serif;max-width:800px;margin:3rem auto;padding:0 1rem;color:#152432}li{padding:6px}aside{padding:12px;background:#eef2f6}a{color:#1457a5}</style></head><body><p><a href="/">← Voltar ao dashboard</a></p><h1>Job ${htmlEscape(id)}</h1><aside>Status: ${htmlEscape(job.status)} · Componentes: ${job.componentCount} · Revisão: ${entry ? htmlEscape(entry.decision + " por " + entry.reviewer) : "pendente"}</aside><h2>Etapas concluídas</h2><ol>${stages || "<li>Nenhuma etapa concluída</li>"}</ol><h2>Pendências</h2><ul>${findings || "<li>Nenhuma</li>"}</ul><p>Este painel é somente leitura. Nenhuma escrita ou publicação no AEM.</p><small>Atualização automática a cada 10 segundos.</small></body></html>`;
 }
 function respond(res: ServerResponse, code: number, body: string, type = "text/html; charset=utf-8"): void {
   res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" });
@@ -50,7 +60,8 @@ export async function startReviewServer(directory: string, port = 4177) {
     if (req.headers.host !== `127.0.0.1:${(server.address() as { port: number }).port}`) {
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
-    if (req.url !== "/" && req.url !== "/review") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    const requestUrl = new URL(req.url ?? "/", origin);
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -58,7 +69,7 @@ export async function startReviewServer(directory: string, port = 4177) {
         // An explicit foreign Origin or cross-site Fetch Metadata is always rejected.
         const requestOrigin = req.headers.origin;
         const fetchSite = req.headers["sec-fetch-site"];
-        if (req.url !== "/review" ||
+        if (requestUrl.pathname !== "/review" ||
             (requestOrigin !== undefined && requestOrigin !== origin && requestOrigin !== "null") ||
             (fetchSite !== undefined && fetchSite !== "same-origin" && fetchSite !== "none")) {
           respond(res, 403, "Forbidden: request origin", "text/plain; charset=utf-8"); return;
@@ -90,6 +101,11 @@ export async function startReviewServer(directory: string, port = 4177) {
       }
       const report = JSON.parse(await readFile(join(base, "report.json"), "utf8")) as WorkbenchReport;
       const ledger = await readReviewLedger(ledgerPath);
+      if (requestUrl.pathname === "/job") {
+        const id = requestUrl.searchParams.get("id");
+        if (!id || !validId(id) || !report.jobs.some(j => j.id === id)) { respond(res, 404, "Job not found", "text/plain; charset=utf-8"); return; }
+        respond(res, 200, renderJobInspector(report, ledger, id)); return;
+      }
       respond(res, 200, renderReviewDashboard(report, ledger, csrf));
     } catch {
       respond(res, 400, "Invalid or stale review; refresh the dashboard and verify the report.", "text/plain; charset=utf-8");
