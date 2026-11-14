@@ -7,6 +7,7 @@ import { evaluateUeValidationGate } from "./integrations/ue-validation-gate.js";
 import { buildAutopilotAdvisoryPlan } from "./integrations/autopilot-advisory-plan.js";
 import { readBindingManifest, verifyBoundComponent } from "./integrations/component-binding-resolver.js";
 import { uePatternConfig } from "./integrations/local-ue-pattern.js";
+import { prioritizeBoundCandidates } from "./integrations/binding-priority.js";
 const [query, requirementsFile, bindingsFile, ...extra] = process.argv.slice(2);
 if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFile || !bindingsFile || extra.length) {
   process.stderr.write("Uso: npm run autopilot:resolve -- banner ./requirements.local.json ./local-input/bindings.json\n");
@@ -19,7 +20,7 @@ if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFi
     const bindings = await readBindingManifest(bindingsFile);
     const config = uePatternConfig();
     const catalog = await fetchAnalystCatalogLocal(process.env.MAESTRO_ANALYTICS_DIR, { tool: "search_component_catalog", query, limit: 5 });
-    const candidates = buildMatchingPlan(catalog.content).candidates.slice(0, 3);
+    const candidates = prioritizeBoundCandidates(buildMatchingPlan(catalog.content).candidates, bindings, 3);
     const plans = [];
     for (const candidate of candidates) {
       const binding = bindings.bindings.find(b => b.catalogId === candidate.id);
