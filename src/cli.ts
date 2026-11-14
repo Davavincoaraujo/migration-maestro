@@ -1,0 +1,11 @@
+import { readFile, writeFile } from "node:fs/promises";
+import { runMaestro } from "./maestro.js";
+import type { LegacyPage } from "./types.js";
+const input = process.argv[2] ?? "examples/pages.json";
+const output = process.argv[3] ?? "migration-results.json";
+const autopilot = process.argv.includes("--autopilot");
+const pages = JSON.parse(await readFile(input, "utf8")) as LegacyPage[];
+if (!Array.isArray(pages)) throw new Error("Input must be an array of pages");
+const results = await runMaestro(pages, { autopilot });
+await writeFile(output, JSON.stringify(results, null, 2) + "\n", { flag: "w" });
+console.log(`Prepared ${results.length} page(s) for review; no pages published.`);
