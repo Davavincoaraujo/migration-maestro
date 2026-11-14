@@ -33,7 +33,8 @@
     "autopilot:handoff": "tsx src/cli-autopilot-handoff.ts",
     "autopilot:isolate": "tsx src/cli-autopilot-isolate.ts",
     "autopilot:agent-preflight": "tsx src/cli-autopilot-agent-preflight.ts",
-    "autopilot:execute": "tsx src/cli-autopilot-execute.ts"
+    "autopilot:execute": "tsx src/cli-autopilot-execute.ts",
+    "autopilot:discover": "tsx src/cli-autopilot-discover.ts"
   },
   "engines": {
     "node": ">=20"
