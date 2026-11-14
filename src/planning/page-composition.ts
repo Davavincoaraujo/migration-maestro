@@ -23,7 +23,7 @@ export function composePage(
   for (const proposal of proposals) {
     if (seen.has(proposal.sourceId)) throw new Error("Duplicate source in page composition");
     seen.add(proposal.sourceId);
-    const candidates = proposal.candidates.filter(c => c.score === 100 && known.has(c.componentId));
+    const candidates = proposal.candidates.filter((c: MappingProposal["candidates"][number]) => c.score === 100 && known.has(c.componentId));
     if (proposal.status !== "review-required" || candidates.length !== 1 || proposal.candidates.length !== 1) {
       findings.push({ code: candidates.length > 1 || proposal.candidates.length > 1 ? "ambiguous-target" : "missing-target", sourceId: proposal.sourceId });
       continue;
