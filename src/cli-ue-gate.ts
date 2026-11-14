@@ -6,5 +6,5 @@ if (!componentPath || extra.length || !/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.t
 } else {
   const result = await evaluateUeValidationGate(componentPath);
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
-  if (!result.cliSucceeded) process.exitCode = 2;
+  if (!result.cliSucceeded || result.validation === "failed" || result.validation === "unverified" || result.validation === "blocked" || result.validation === "unavailable") process.exitCode = 2;
 }

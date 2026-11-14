@@ -8,6 +8,7 @@ import { buildAutopilotAdvisoryPlan } from "./integrations/autopilot-advisory-pl
 import { readBindingManifest, verifyBoundComponent } from "./integrations/component-binding-resolver.js";
 import { uePatternConfig } from "./integrations/local-ue-pattern.js";
 import { prioritizeBoundCandidates } from "./integrations/binding-priority.js";
+import { createTaskPacket } from "./integrations/autopilot-task-packet.js";
 const [query, requirementsFile, bindingsFile, ...extra] = process.argv.slice(2);
 if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFile || !bindingsFile || extra.length) {
   process.stderr.write("Uso: npm run autopilot:resolve -- banner ./requirements.local.json ./local-input/bindings.json\n");
@@ -43,6 +44,7 @@ if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFi
         ueErrors: gate?.errors ?? null, ueWarnings: gate?.warnings ?? null, ueInfos: gate?.infos ?? null,
         status: "review_required", humanApprovalRequired: true, codeExecutionAuthorized: false,
         nextAction: !resolved ? "resolve_binding" : plan?.nextAction ?? "investigate_evidence",
+        taskPacket: createTaskPacket(compatibility, gate, resolved),
       });
     }
     process.stdout.write(JSON.stringify({
