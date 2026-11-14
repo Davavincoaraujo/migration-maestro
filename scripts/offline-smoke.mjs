@@ -6,11 +6,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { stripTypeScriptTypes } from "node:module";
+import * as nodeModule from "node:module";
+
+let transpile;
+if (typeof nodeModule.stripTypeScriptTypes === "function") {
+  transpile = source => nodeModule.stripTypeScriptTypes(source, { mode: "strip" });
+} else {
+  try {
+    const ts = await import("typescript");
+    transpile = source => ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+  } catch {
+    console.error("Node " + process.version + " does not support built-in TypeScript stripping.");
+    console.error("Run npm install (existing devDependencies only) then retry, or upgrade to Node 22.16+.");
+    process.exitCode = 1;
+  }
+}
+if (!transpile) process.exit(1);
 
 async function loadLocal(path) {
   const source = await readFile(new URL("../" + path, import.meta.url), "utf8");
-  const javascript = stripTypeScriptTypes(source, { mode: "strip" });
+  const javascript = transpile(source);
   return import("data:text/javascript;base64," + Buffer.from(javascript).toString("base64"));
 }
 
