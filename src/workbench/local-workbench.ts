@@ -45,6 +45,7 @@ function summarize(id: string, outcome: QueueOutcome<Checkpoint>): WorkbenchJob 
 /** Local synthetic workbench. No external writes, model calls or approval actions. */
 export async function runLocalWorkbench(
   jobs: readonly EvidenceBatchJob[], checkpointDirectory: string, options: QueueOptions,
+  onProgress?: (id: string, stage: string, completed: number, total: number) => void,
 ): Promise<WorkbenchReport> {
   const store = new FileCheckpointStore(checkpointDirectory);
   const before = await Promise.all(jobs.map(async j => {
@@ -52,7 +53,7 @@ export async function runLocalWorkbench(
     return store.get(id);
   }));
   const started = performance.now();
-  const outcomes = await runEvidenceBatch(jobs, store, options);
+  const outcomes = await runEvidenceBatch(jobs, store, options, onProgress);
   const elapsedMs = Math.round((performance.now() - started) * 100) / 100;
   const records = outcomes.map((outcome, i) => summarize(jobs[i].id, outcome));
   const reusedCheckpoints = before.filter(c => c?.state === "awaiting-review").length;
