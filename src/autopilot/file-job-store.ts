@@ -5,7 +5,10 @@ import type { JobRecord, JobStore } from "./job.js";
 
 const validId = (id: string): boolean => /^[a-f0-9]{20}$/.test(id);
 function validate(record: JobRecord, id: string): void {
-  if (!record || record.id !== id || !validId(record.id) ||
+  if (!record || typeof record.id !== "string" || !validId(record.id) || !validId(id)) {
+    throw new Error("Invalid job identifier");
+  }
+  if (record.id !== id ||
       !["queued", "running", "awaiting-review", "failed"].includes(record.state) ||
       typeof record.sourcePath !== "string" || !Array.isArray(record.events)) {
     throw new Error("Invalid persisted job record");
