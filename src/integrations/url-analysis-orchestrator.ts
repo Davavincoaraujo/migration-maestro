@@ -49,12 +49,14 @@ export function selectUrlAnalysisTool(tools: { name: string; inputSchema?: { pro
  return null;
 }
 /** One MCP session; no unapproved side-effect tools, no raw data sent to GitHub. */
-export async function analyzeUrlViaMcp(directory: string | undefined, url: string): Promise<UrlAnalysis> {
+export async function analyzeUrlViaMcp(directory: string | undefined, url: string, onProgress?: (event: string) => void): Promise<UrlAnalysis> {
  const validatedUrl = validatePageUrl(url);
+ onProgress?.("Validando configuração do Analyst");
  if (!directory) throw new Error("ANALYST_DIRECTORY_NOT_CONFIGURED");
  const root = await realpath(directory);
  const entry = await realpath(join(root, "mcp/dist/src/server.js"));
  if (!entry.startsWith(root + "/")) throw new Error("ANALYST_ENTRY_OUTSIDE_PROJECT");
+ onProgress?.("Inicializando servidor MCP");
  const child = spawn(process.execPath, [entry], { cwd: root, shell: false, stdio: ["pipe", "pipe", "ignore"] });
  return await new Promise((resolve, reject) => {
   let finished = false;
@@ -78,16 +80,19 @@ export async function analyzeUrlViaMcp(directory: string | undefined, url: strin
     if (msg.id === 1) {
      if (msg.error) return done(new Error("ANALYST_HANDSHAKE_FAILED"));
      child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
+     onProgress?.("Descobrindo ferramentas disponíveis");
      send(2, "tools/list", {});
     } else if (msg.id === 2) {
      if (msg.error || !Array.isArray(msg.result?.tools)) return done(new Error("ANALYST_TOOL_DISCOVERY_FAILED"));
      selection = selectUrlAnalysisTool(msg.result.tools);
      if (!selection) return done(undefined, { stage: "needs_configuration", tool: null, content: [], reason: "URL_TOOL_SCHEMA_UNSUPPORTED" });
+     onProgress?.("Executando " + selection.name);
      send(3, "tools/call", { name: selection.name, arguments: { [selection.key]: validatedUrl } });
     } else if (msg.id === 3) {
      if (msg.error) return done(new Error("ANALYST_RPC_CALL_ERROR"));
      if (msg.result?.isError) return done(new Error(classifyAnalystToolError(msg.result?.content)));
      if (!Array.isArray(msg.result?.content)) return done(new Error("ANALYST_INVALID_RESULT"));
+     onProgress?.("Evidências recebidas; aguardando revisão");
      done(undefined, { stage: "analyzed", tool: selection!.name, content: msg.result.content });
     }
    } catch { /* Ignore non-JSON diagnostics. */ }
