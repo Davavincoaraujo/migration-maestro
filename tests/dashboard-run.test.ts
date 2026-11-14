@@ -8,8 +8,11 @@ import { startReviewServer } from "../src/workbench/review-server.js";
 test("opt-in dashboard run executes synthetic jobs, reuses checkpoints and rejects invalid CSRF", async () => {
   const dir = await mkdtemp(join(tmpdir(), "maestro-run-"));
   const input = resolve("examples/workbench-jobs.json");
-  await writeFile(join(dir, "report.json"), await readFile(resolve(".local-maestro/workbench/report.json"), "utf8").catch(async () => {
-    return JSON.stringify({ schemaVersion: 1, generatedAt: "", jobs: [], summary: { total: 0, blocked: 0, reviewRequired: 0, failed: 0, cancelled: 0 }, metrics: { completedStages: 0, stageExecutions: 0, reusedCheckpoints: 0, elapsedMs: 0, estimatedModelCostBRL: 0 }, noAemWrites: true });
+  await writeFile(join(dir, "report.json"), JSON.stringify({
+    schemaVersion: 1, generatedAt: "", jobs: [],
+    summary: { total: 0, blocked: 0, reviewRequired: 0, failed: 0, cancelled: 0 },
+    metrics: { completedStages: 0, stageExecutions: 0, reusedCheckpoints: 0, elapsedMs: 0, estimatedModelCostBRL: 0 },
+    noAemWrites: true,
   }));
   const server = await startReviewServer(dir, 0, input);
   try {
