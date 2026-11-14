@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, rename } from "node:fs/promises";
 import { runLocalWorkbench } from "./local-workbench.js";
 import type { EvidenceBatchJob } from "../pipeline/evidence-batch.js";
 import { resolve, join } from "node:path";
@@ -58,13 +58,14 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
   const csrf = randomBytes(32).toString("hex");
   let busy = false;
   let running = false;
+  let runState: { status: "idle" | "running" | "completed" | "failed"; startedAt?: string; finishedAt?: string } = { status: "idle" };
   const server = createServer(async (req, res) => {
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
     if (req.headers.host !== `127.0.0.1:${(server.address() as { port: number }).port}`) {
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -88,15 +89,27 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
               !secureEqual(params.get("csrf") ?? "", csrf)) {
             respond(res, 403, "Invalid run token", "text/plain; charset=utf-8"); return;
           }
+          // Reserve the runner synchronously; subsequent requests can inspect status.
           running = true;
-          try {
-            const raw: unknown = JSON.parse(await readFile(resolve(syntheticInputFile), "utf8"));
-            if (!Array.isArray(raw) || raw.length > 100 || raw.some(j => !j || typeof j !== "object")) throw new Error("Invalid synthetic jobs");
-            const report = await runLocalWorkbench(raw as EvidenceBatchJob[], join(base, "checkpoints"), { concurrency: 2, maxJobs: 100 });
-            await writeFile(join(base, "report.json"), JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
-            res.writeHead(303, { Location: "/", "Cache-Control": "no-store" });
-            res.end(); return;
-          } finally { running = false; }
+          runState = { status: "running", startedAt: new Date().toISOString() };
+          void (async () => {
+            try {
+              const raw: unknown = JSON.parse(await readFile(resolve(syntheticInputFile), "utf8"));
+              if (!Array.isArray(raw) || raw.length > 100 || raw.some(j => !j || typeof j !== "object")) throw new Error("Invalid synthetic jobs");
+              const report = await runLocalWorkbench(raw as EvidenceBatchJob[], join(base, "checkpoints"), { concurrency: 2, maxJobs: 100 });
+              const output = join(base, "report.json");
+              const temporary = join(base, "report.pending.json");
+              await writeFile(temporary, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
+              await rename(temporary, output);
+              runState = { ...runState, status: "completed", finishedAt: new Date().toISOString() };
+            } catch {
+              runState = { ...runState, status: "failed", finishedAt: new Date().toISOString() };
+            } finally {
+              running = false;
+            }
+          })();
+          res.writeHead(303, { Location: "/", "Cache-Control": "no-store" });
+          res.end(); return;
         }
         if (busy || running) { respond(res, 409, "Review in progress", "text/plain; charset=utf-8"); return; }
         busy = true;
@@ -120,6 +133,9 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.end(); return;
         } finally { busy = false; }
       }
+      if (requestUrl.pathname === "/run-status") {
+        respond(res, 200, JSON.stringify(runState), "application/json; charset=utf-8"); return;
+      }
       const report = JSON.parse(await readFile(join(base, "report.json"), "utf8")) as WorkbenchReport;
       const ledger = await readReviewLedger(ledgerPath);
       if (requestUrl.pathname === "/job") {
@@ -127,7 +143,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         if (!id || !validId(id) || !report.jobs.some(j => j.id === id)) { respond(res, 404, "Job not found", "text/plain; charset=utf-8"); return; }
         respond(res, 200, renderJobInspector(report, ledger, id)); return;
       }
-      respond(res, 200, renderReviewDashboard(report, ledger, csrf, "", Boolean(syntheticInputFile)));
+      respond(res, 200, renderReviewDashboard(report, ledger, csrf, running ? "Execução em andamento. Atualize para acompanhar." : runState.status === "failed" ? "Última execução falhou; relatório anterior preservado." : runState.status === "completed" ? "Última execução concluída." : "", Boolean(syntheticInputFile)));
     } catch {
       respond(res, 400, "Invalid or stale review; refresh the dashboard and verify the report.", "text/plain; charset=utf-8");
     }
