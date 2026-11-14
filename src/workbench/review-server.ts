@@ -1,3 +1,4 @@
+import { AgentHistoryStore } from "./agent-history.js";
 import { renderAgentInspector } from "./agent-inspector.js";
 import { renderDiagramsPage, type DiagramKind } from "./migration-diagrams.js";
 import { renderAgentGraph, type AgentVisualState } from "./agent-graph-html.js";
@@ -67,6 +68,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
   type JobProgress = { id: string; status: "queued" | "running" | "review-required" | "blocked" | "failed" | "cancelled"; stage: string; completed: number; total: number };
   let jobProgress: JobProgress[] = [];
   const journal = new MaestroEventJournal();
+  const agentHistory = new AgentHistoryStore(base);
   let agentRun: { status: "idle" | "running" | "completed" | "failed"; jobId?: string } = { status: "idle" };
   let agentStates: AgentVisualState[] = [];
   let runState: { status: "idle" | "running" | "completed" | "failed"; startedAt?: string; finishedAt?: string } = { status: "idle" };
@@ -76,7 +78,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -107,19 +109,30 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           agentRun = { status: "running", jobId };
           agentStates = [];
           void (async () => {
+            const started = Date.now();
+            let previous = started;
+            const historyWrites: Promise<unknown>[] = [];
             try {
+              await agentHistory.append({ jobId, kind: "run.started" });
               const fixture = (raw as EvidenceBatchJob[]).find(item => item.id === jobId);
               if (!fixture) throw new Error("Missing job");
               const store = new FileCheckpointStore(join(base, "agent-checkpoints"));
               await executeLocalAgentGraph(jobId, fixture.input, createSyntheticAgentHandlers(), store, undefined, event => {
+                const now = Date.now();
+                historyWrites.push(agentHistory.append({ jobId, kind: event.stage === "checkpoint-reused" ? "agent.reused" : "agent.completed", agentId: event.agentId === "none" ? undefined : event.agentId, elapsedMs: now - previous }));
+                previous = now;
                 if (event.stage === "checkpoint-reused") {
                   agentStates = ["discovery", "evidence", "mapping", "composition", "quality"].map(id => ({ id, status: "reused" as const }));
                 } else {
                   agentStates = [...agentStates.filter(item => item.id !== event.agentId), { id: event.agentId, status: "completed" }];
                 }
               });
+              await Promise.all(historyWrites);
+              await agentHistory.append({ jobId, kind: "run.completed", elapsedMs: Date.now() - started });
               agentRun = { status: "completed", jobId };
             } catch {
+              await Promise.allSettled(historyWrites);
+              try { await agentHistory.append({ jobId, kind: "run.failed", elapsedMs: Date.now() - started }); } catch { /* no sensitive error details */ }
               agentRun = { status: "failed", jobId };
             }
           })();
@@ -190,6 +203,13 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.writeHead(303, { Location: "/", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
           res.end(); return;
         } finally { busy = false; }
+      }
+      if (requestUrl.pathname === "/agents/history") {
+        if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
+        const id = requestUrl.searchParams.get("id") ?? "";
+        if (!validId(id)) { respond(res, 400, "Invalid job", "text/plain; charset=utf-8"); return; }
+        const entries = await agentHistory.list(id);
+        respond(res, 200, JSON.stringify({ jobId: id, entries }), "application/json; charset=utf-8"); return;
       }
       if (requestUrl.pathname === "/agents/inspect") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
