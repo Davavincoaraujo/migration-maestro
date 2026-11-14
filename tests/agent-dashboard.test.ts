@@ -50,7 +50,7 @@ test("dashboard runs isolated local synthetic agent graph and reuses checkpoints
     const first = await wait();
     assert.equal(first.agents.length, 5);
     assert.equal(first.agents.every(agent => agent.status === "completed"), true);
-    assert.match(await (await fetch(base + "/agents")).text(), /Human Review/);
+    assert.match(await (await fetch(base + "/agents")).text(), /revisão humana/);
     assert.equal((await run(csrf, "demo")).status, 303);
     const second = await wait();
     assert.equal(second.agents.every(agent => agent.status === "reused"), true);
