@@ -45,6 +45,13 @@ test("opt-in dashboard run executes synthetic jobs, reuses checkpoints and rejec
     const first = JSON.parse(await readFile(join(dir, "report.json"), "utf8")) as { summary: { total: number; blocked: number }; metrics: { stageExecutions: number; reusedCheckpoints: number } };
     assert.equal(first.summary.total, 2);
     assert.equal(first.summary.blocked, 1);
+    const progressResponse = await fetch(base + "/run-status");
+    const progress = await progressResponse.json() as { jobs: { id: string; status: string; completed: number; total: number }[] };
+    assert.equal(progress.jobs.length, 2);
+    assert.equal(progress.jobs.find(job => job.id === "demo")?.status, "review-required");
+    assert.equal(progress.jobs.find(job => job.id === "blocked")?.status, "blocked");
+    assert.equal(progress.jobs.every(job => job.completed === 3 && job.total === 3), true);
+    assert.match(await (await fetch(base)).text(), /Progresso dos jobs/);
     assert.equal((await run()).status, 303);
     await waitForCompletion();
     const second = JSON.parse(await readFile(join(dir, "report.json"), "utf8")) as typeof first;
