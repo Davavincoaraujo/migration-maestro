@@ -93,7 +93,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
             const raw: unknown = JSON.parse(await readFile(resolve(syntheticInputFile), "utf8"));
             if (!Array.isArray(raw) || raw.length > 100 || raw.some(j => !j || typeof j !== "object")) throw new Error("Invalid synthetic jobs");
             const report = await runLocalWorkbench(raw as EvidenceBatchJob[], join(base, "checkpoints"), { concurrency: 2, maxJobs: 100 });
-            await writeFile(join(base, "report.json"), JSON.stringify(report, null, 2) + "\\n", { mode: 0o600 });
+            await writeFile(join(base, "report.json"), JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
             res.writeHead(303, { Location: "/", "Cache-Control": "no-store" });
             res.end(); return;
           } finally { running = false; }
