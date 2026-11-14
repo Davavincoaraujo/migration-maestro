@@ -63,7 +63,9 @@ export async function analyzeUrlViaMcp(directory: string | undefined, url: strin
      if (!selection) return done(undefined, { stage: "needs_configuration", tool: null, content: [], reason: "URL_TOOL_SCHEMA_UNSUPPORTED" });
      send(3, "tools/call", { name: selection.name, arguments: { [selection.key]: validatedUrl } });
     } else if (msg.id === 3) {
-     if (msg.error || msg.result?.isError || !Array.isArray(msg.result?.content)) return done(new Error("ANALYST_ANALYSIS_FAILED"));
+     if (msg.error) return done(new Error("ANALYST_RPC_CALL_ERROR"));
+     if (msg.result?.isError) return done(new Error("ANALYST_TOOL_RETURNED_ERROR"));
+     if (!Array.isArray(msg.result?.content)) return done(new Error("ANALYST_INVALID_RESULT"));
      done(undefined, { stage: "analyzed", tool: selection!.name, content: msg.result.content });
     }
    } catch { /* Ignore non-JSON diagnostics. */ }
