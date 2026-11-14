@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { runUePatternReadOnly, uePatternConfig, verifyUePattern } from "../src/integrations/local-ue-pattern.js";
@@ -20,7 +20,7 @@ test("ue-pattern adapter invokes allowlisted read-only CLI without shell", async
     const config = { cliDirectory: cliRoot, projectDirectory: project };
     assert.ok((await verifyUePattern(config)).cli.endsWith("cli.js"));
     const result = await runUePatternReadOnly(config, "buscar", "teste");
-    assert.deepEqual(JSON.parse(result.output), ["buscar", "teste", "--projeto", project]);
+    assert.deepEqual(JSON.parse(result.output), ["buscar", "teste", "--projeto", await realpath(project)]);
     await assert.rejects(runUePatternReadOnly(config, "validar", "../outside"));
     await assert.rejects(runUePatternReadOnly(config, "buscar", "bad\ninput"));
     await assert.rejects(runUePatternReadOnly(config, "topicos", "unexpected"));
