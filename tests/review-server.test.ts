@@ -33,7 +33,9 @@ test("dashboard requires CSRF and origin, persists approval, and refuses replay"
     const denied = await fetch(base + "/review", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body, redirect: "manual" });
     assert.equal(denied.status, 403);
     const headers = { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", Origin: base };
-    const accepted = await fetch(base + "/review", { method: "POST", headers, body, redirect: "manual" });
+    const wrongOrigin = await fetch(base + "/review", { method: "POST", headers: { ...headers, Origin: "http://evil.example", "Sec-Fetch-Site": "same-origin" }, body, redirect: "manual" });
+    assert.equal(wrongOrigin.status, 403);
+    const accepted = await fetch(base + "/review", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "Sec-Fetch-Site": "same-origin" }, body, redirect: "manual" });
     assert.equal(accepted.status, 303);
     const saved = JSON.parse(await readFile(join(dir, "reviews.json"), "utf8")) as { entries: { decision: string }[] };
     assert.equal(saved.entries[0].decision, "approved");
