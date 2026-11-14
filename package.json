@@ -18,7 +18,8 @@
     "local:preflight": "tsx src/cli-local-preflight.ts",
     "analyst:tools": "tsx src/cli-analyst-mcp.ts",
     "analyst:context": "tsx src/cli-analyst-context.ts",
-    "analyst:catalog": "tsx src/cli-analyst-catalog.ts"
+    "analyst:catalog": "tsx src/cli-analyst-catalog.ts",
+    "analyst:shape": "tsx src/cli-analyst-shape.ts"
   },
   "engines": {
     "node": ">=20"
