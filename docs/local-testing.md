@@ -2,13 +2,13 @@
 
 The repository has two local verification modes.
 
-**No npm install or external dependencies:** use Node.js 22.16+ and run:
+**Without npm install:** use Node.js 22.16+ and run:
 
 ```sh
 node scripts/offline-smoke.mjs
 ```
 
-This uses Node's built-in test runner and TypeScript type stripping. It reads the actual local TypeScript source files for four self-contained modules: model routing, bounded queue, metrics and legacy evidence. It does not contact GitHub, Adobe, Jira, model providers or corporate systems. The type-stripping API is experimental in Node 22.
+On older Node.js versions, the script falls back to the project's existing `typescript` devDependency, if installed. If neither is available, it prints a clear compatibility error. This uses Node's built-in test runner and TypeScript type stripping or transpilation. It reads the actual local TypeScript source files for four self-contained modules: model routing, bounded queue, metrics and legacy evidence. It does not contact GitHub, Adobe, Jira, model providers or corporate systems. The type-stripping API is experimental in Node 22.
 
 **Full repository tests** (requires installing only the existing package devDependencies locally):
 
