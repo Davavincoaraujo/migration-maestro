@@ -25,6 +25,14 @@ test("dashboard requires CSRF and origin, persists approval, and refuses replay"
     assert.equal(page.status, 200);
     const html = await page.text();
     assert.match(html, /Aprovar plano/);
+    assert.match(html, /href="\\/job\\?id=demo"/);
+    const detail = await fetch(base + "/job?id=demo");
+    assert.equal(detail.status, 200);
+    const detailHtml = await detail.text();
+    assert.match(detailHtml, /Etapas concluídas/);
+    assert.match(detailHtml, /quality-gate/);
+    assert.equal((await fetch(base + "/job?id=missing")).status, 404);
+    assert.equal((await fetch(base + "/job?id=..%2Fsecret")).status, 404);
     assert.doesNotMatch(html, /name="jobId" value="blocked"/);
     const csrf = html.match(/name="csrf" value="([a-f0-9]+)"/)?.[1];
     const digest = html.match(/name="digest" value="([a-f0-9]+)"/)?.[1];
