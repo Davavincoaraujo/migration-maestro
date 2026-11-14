@@ -78,7 +78,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history" && requestUrl.pathname !== "/agents/history/view") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -203,6 +203,19 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.writeHead(303, { Location: "/", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
           res.end(); return;
         } finally { busy = false; }
+      }
+      if (requestUrl.pathname === "/agents/history/view") {
+        if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
+        const id = requestUrl.searchParams.get("id") ?? "";
+        if (!validId(id)) { respond(res, 400, "Invalid job", "text/plain; charset=utf-8"); return; }
+        const entries = await agentHistory.list(id);
+        const rows = entries.map(entry => '<tr><td>' + entry.sequence + '</td><td>' + htmlEscape(entry.timestamp) +
+          '</td><td>' + htmlEscape(entry.kind) + '</td><td>' + htmlEscape(entry.agentId ?? "-") +
+          '</td><td>' + (entry.elapsedMs ?? "-") + '</td></tr>').join("");
+        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="5"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Histórico de agentes</title><style>body{font:16px system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%}td,th{padding:9px;border-bottom:1px solid #ddd;text-align:left}</style></head><body><p><a href="/agents">Voltar aos agentes</a></p><h1>Histórico local: ' +
+          htmlEscape(id) + '</h1><p>Somente metadados; tempos em milissegundos. Sem payloads ou mensagens de erro.</p><table><thead><tr><th>#</th><th>Data</th><th>Evento</th><th>Agente</th><th>Duração (ms)</th></tr></thead><tbody>' +
+          rows + '</tbody></table></body></html>';
+        respond(res, 200, html); return;
       }
       if (requestUrl.pathname === "/agents/history") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
