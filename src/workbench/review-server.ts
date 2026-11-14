@@ -1,3 +1,4 @@
+import { renderDiagramsPage, type DiagramKind } from "./migration-diagrams.js";
 import { renderAgentGraph, type AgentVisualState } from "./agent-graph-html.js";
 import { createSyntheticAgentHandlers, executeLocalAgentGraph } from "../orchestration/local-agent-executor.js";
 import { FileCheckpointStore } from "../autopilot/file-checkpoint-store.js";
@@ -74,7 +75,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -189,13 +190,21 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.end(); return;
         } finally { busy = false; }
       }
+      if (requestUrl.pathname === "/diagrams") {
+        if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
+        const kind = requestUrl.searchParams.get("kind") ?? "execution";
+        if (!["execution", "components", "sequence"].includes(kind)) {
+          respond(res, 400, "Unknown diagram", "text/plain; charset=utf-8"); return;
+        }
+        respond(res, 200, renderDiagramsPage(kind as DiagramKind, agentStates, agentRun.status)); return;
+      }
       if (requestUrl.pathname === "/agents/status") {
         respond(res, 200, JSON.stringify({ ...agentRun, agents: agentStates }), "application/json; charset=utf-8"); return;
       }
       if (requestUrl.pathname === "/agents") {
         const graph = renderAgentGraph(agentStates);
         const form = syntheticInputFile ? '<form method="post" action="/agents/run"><input type="hidden" name="csrf" value="' + csrf + '"><label>ID do job sintético <input name="jobId" required maxlength="80" pattern="[A-Za-z0-9_-]{1,80}" value="demo"></label><button type="submit">Executar agentes locais</button></form>' : "<p>Inicie o dashboard com um arquivo de jobs sintéticos para executar.</p>";
-        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Migration Maestro — Agentes</title></head><body><p><a href="/">Voltar ao dashboard</a></p><h1>Centro de orquestração</h1><p>Execução: ' + htmlEscape(agentRun.status) + (agentRun.jobId ? " — " + htmlEscape(agentRun.jobId) : "") + '</p>' + form + graph + '<p>Resultado: simulação, sem chamadas a modelos ou escrita no AEM. Revisão humana permanece separada.</p></body></html>';
+        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Migration Maestro — Agentes</title></head><body><p><a href="/">Voltar ao dashboard</a></p><h1>Centro de orquestração</h1><p><a href="/diagrams">Ver diagramas UML e execução</a></p><p>Execução: ' + htmlEscape(agentRun.status) + (agentRun.jobId ? " — " + htmlEscape(agentRun.jobId) : "") + '</p>' + form + graph + '<p>Resultado: simulação, sem chamadas a modelos ou escrita no AEM. Revisão humana permanece separada.</p></body></html>';
         respond(res, 200, html); return;
       }
       if (requestUrl.pathname === "/events") {
