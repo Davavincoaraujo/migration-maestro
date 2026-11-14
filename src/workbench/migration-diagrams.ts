@@ -47,7 +47,7 @@ export function renderMigrationDiagram(kind: DiagramKind, states: readonly Agent
   return svg("Diagrama UML de sequência da migração sintética", 800, 340, columns + arrows);
 }
 function svg(title: string, width: number, height: number, body: string): string {
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escape(title) + '" style="width:100%;height:auto;max-width:950px;background:#fff;border:1px solid #dce5ed;border-radius:12px"><title>' + escape(title) + '</title><defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#526d88"/></marker></defs>' + body + '</svg>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escape(title) + '" width="' + width + '" height="' + height + '"><title>' + escape(title) + '</title><defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#526d88"/></marker></defs>' + body + '</svg>';
 }
 export function renderDiagramsPage(kind: DiagramKind, states: readonly AgentVisualState[], runStatus: string): string {
   const links = (["execution", "components", "sequence"] as const).map(k =>
