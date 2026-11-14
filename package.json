@@ -20,7 +20,8 @@
     "analyst:context": "tsx src/cli-analyst-context.ts",
     "analyst:catalog": "tsx src/cli-analyst-catalog.ts",
     "analyst:shape": "tsx src/cli-analyst-shape.ts",
-    "analyst:matches": "tsx src/cli-analyst-matches.ts"
+    "analyst:matches": "tsx src/cli-analyst-matches.ts",
+    "analyst:match": "tsx src/cli-analyst-match.ts"
   },
   "engines": {
     "node": ">=20"
