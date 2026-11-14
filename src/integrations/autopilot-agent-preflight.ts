@@ -35,10 +35,11 @@ export async function agentPreflight(worktreePath: string, packetValue: unknown,
  if (!(await stat(target)).isDirectory()) throw new Error("INVALID_WORKTREE_PATH");
  const top = await realpath(await git(target, ["rev-parse", "--show-toplevel"]));
  if (top !== target) throw new Error("NOT_WORKTREE_ROOT");
- const common = await realpath(await git(target, ["rev-parse", "--git-common-dir"]));
+ const commonPath = await git(target, ["rev-parse", "--git-common-dir"]);
+ const common = await realpath(resolve(target, commonPath));
  if (within(target, common) || target === common) throw new Error("NOT_ISOLATED_WORKTREE");
- const detached = await git(target, ["symbolic-ref", "-q", "HEAD"]).then(() => false, () => true);
- if (!detached) throw new Error("WORKTREE_NOT_DETACHED");
+ const branch = await git(target, ["rev-parse", "--abbrev-ref", "HEAD"]);
+ if (branch !== "HEAD") throw new Error("WORKTREE_NOT_DETACHED");
  const dirty = await git(target, ["status", "--porcelain", "--untracked-files=all"]);
  if (dirty) throw new Error("WORKTREE_HAS_CHANGES");
  const head = await git(target, ["rev-parse", "--verify", "HEAD"]);
