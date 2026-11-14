@@ -1,6 +1,8 @@
 node_modules/
 dist/
+coverage/
 .env
 .env.*
 !.env.example
-migration-results.json
+local-input/
+local-output/
