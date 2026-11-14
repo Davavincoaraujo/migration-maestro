@@ -54,7 +54,7 @@ export async function startReviewServer(directory: string, port = 4177) {
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
-        if (req.url !== "/review" || req.headers.origin !== origin || req.headers["content-type"] !== "application/x-www-form-urlencoded") {
+        if (req.url !== "/review" || req.headers.origin !== origin || !/^application\/x-www-form-urlencoded(?:\s*;\s*charset\s*=\s*utf-8)?$/i.test(req.headers["content-type"] ?? "")) {
           respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
         }
         if (busy) { respond(res, 409, "Review in progress", "text/plain; charset=utf-8"); return; }
