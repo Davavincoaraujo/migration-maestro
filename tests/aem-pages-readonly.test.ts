@@ -43,3 +43,15 @@ test("AEM connector refuses redirects and oversized responses", async () => {
   })) as typeof fetch);
   assert.equal(oversized.state, "unavailable");
 });
+
+test("AEM root page without children appears in inventory", async () => {
+  const response = async () => new Response(JSON.stringify({
+    "jcr:primaryType": "cq:Page",
+    "jcr:content": { "jcr:primaryType": "cq:PageContent", "jcr:title": "Nossa Cultura" },
+  }), { headers: { "content-type": "application/json" } });
+  const result = await readLocalAemPages({
+    ...env, MAESTRO_AEM_AUTHOR_URL: "http://localhost:4502/sites.html/content/portal-banco-bradesco/carreiras/cultura",
+  }, response as typeof fetch);
+  assert.equal(result.state, "connected");
+  assert.deepEqual(result.pages, [{ name: "cultura", title: "Nossa Cultura", hasContent: true }]);
+});
