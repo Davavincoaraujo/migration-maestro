@@ -27,9 +27,13 @@ export async function fetchAnalystCatalogLocal(directory: string | undefined, re
   const entry = await realpath(join(root, "mcp", "dist", "src", "server.js")).catch(() => { throw new Error("ANALYST_NOT_BUILT"); });
   const rel = relative(root, entry);
   if (rel === ".." || rel.startsWith(".." + sep) || isAbsolute(rel)) throw new Error("ANALYST_ENTRY_OUTSIDE_PROJECT");
-  const child = spawn(process.execPath, [entry], { cwd: root, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "ignore"] });
+  const child = spawn(process.execPath, [entry], { cwd: root, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
   return new Promise<LocalCatalogResponse>((resolve, reject) => {
     let finished = false;
+    let phase: "startup" | "initialize" | "list" | "call" = "startup";
+    let stderrBytes = 0;
+    let stderrSeen = false;
+    child.stderr.on("data", (chunk: Buffer) => { stderrSeen = true; stderrBytes += chunk.length; if (stderrBytes > 65536) finish(new Error("ANALYST_STDERR_LIMIT")); });
     const timer = setTimeout(() => finish(new Error("ANALYST_TIMEOUT")), 15000);
     const reader = createInterface({ input: child.stdout });
     function finish(error?: Error, content?: unknown[]) {
@@ -45,7 +49,12 @@ export async function fetchAnalystCatalogLocal(directory: string | undefined, re
       child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
     }
     child.on("error", () => finish(new Error("ANALYST_START_FAILED")));
-    child.on("close", () => { if (!finished) finish(new Error("ANALYST_EXITED")); });
+    child.on("close", (code, signal) => {
+      if (!finished) {
+        const suffix = phase.toUpperCase();
+        finish(new Error("ANALYST_EXITED_" + suffix + (signal ? "_SIGNALLED" : code === 0 ? "_ZERO" : "_NONZERO") + (stderrSeen ? "_STDERR" : "")));
+      }
+    });
     reader.on("line", line => {
       if (line.length > 256000) return finish(new Error("ANALYST_RESPONSE_TOO_LARGE"));
       try {
@@ -53,9 +62,11 @@ export async function fetchAnalystCatalogLocal(directory: string | undefined, re
         if (msg.id === 1) {
           if (msg.error) return finish(new Error("ANALYST_HANDSHAKE_FAILED"));
           child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
+          phase = "list";
           send(2, "tools/list", {});
         } else if (msg.id === 2) {
           if (msg.error || !msg.result?.tools?.some(t => t.name === call.name)) return finish(new Error("ANALYST_CATALOG_TOOL_UNAVAILABLE"));
+          phase = "call";
           send(3, "tools/call", call);
         } else if (msg.id === 3) {
           if (msg.error || msg.result?.isError || !Array.isArray(msg.result?.content)) return finish(new Error("ANALYST_CATALOG_CALL_FAILED"));
@@ -63,6 +74,7 @@ export async function fetchAnalystCatalogLocal(directory: string | undefined, re
         }
       } catch { /* Never log tool output. */ }
     });
+    phase = "initialize";
     send(1, "initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "migration-maestro", version: "0.1.0" } });
   });
 }
