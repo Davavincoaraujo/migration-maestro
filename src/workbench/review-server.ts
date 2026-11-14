@@ -58,6 +58,8 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
   const csrf = randomBytes(32).toString("hex");
   let busy = false;
   let running = false;
+  type JobProgress = { id: string; status: "queued" | "running" | "review-required" | "blocked" | "failed" | "cancelled"; stage: string; completed: number; total: number };
+  let jobProgress: JobProgress[] = [];
   let runState: { status: "idle" | "running" | "completed" | "failed"; startedAt?: string; finishedAt?: string } = { status: "idle" };
   const server = createServer(async (req, res) => {
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -96,7 +98,15 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
             try {
               const raw: unknown = JSON.parse(await readFile(resolve(syntheticInputFile), "utf8"));
               if (!Array.isArray(raw) || raw.length > 100 || raw.some(j => !j || typeof j !== "object")) throw new Error("Invalid synthetic jobs");
-              const report = await runLocalWorkbench(raw as EvidenceBatchJob[], join(base, "checkpoints"), { concurrency: 2, maxJobs: 100 });
+              jobProgress = (raw as EvidenceBatchJob[]).map(job => ({ id: job.id, status: "queued", stage: "queued", completed: 0, total: 3 }));
+              const report = await runLocalWorkbench(raw as EvidenceBatchJob[], join(base, "checkpoints"), { concurrency: 2, maxJobs: 100 }, (id, stage, completed, total) => {
+                const job = jobProgress.find(item => item.id === id);
+                if (job) { job.status = "running"; job.stage = stage; job.completed = completed; job.total = total; }
+              });
+              for (const result of report.jobs) {
+                const job = jobProgress.find(item => item.id === result.id);
+                if (job) { job.status = result.status; job.completed = result.stages.length; job.stage = result.stages.at(-1) ?? "none"; }
+              }
               const output = join(base, "report.json");
               const temporary = join(base, "report.pending.json");
               await writeFile(temporary, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
@@ -134,7 +144,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         } finally { busy = false; }
       }
       if (requestUrl.pathname === "/run-status") {
-        respond(res, 200, JSON.stringify(runState), "application/json; charset=utf-8"); return;
+        respond(res, 200, JSON.stringify({ ...runState, jobs: jobProgress }), "application/json; charset=utf-8"); return;
       }
       const report = JSON.parse(await readFile(join(base, "report.json"), "utf8")) as WorkbenchReport;
       const ledger = await readReviewLedger(ledgerPath);
@@ -143,7 +153,10 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         if (!id || !validId(id) || !report.jobs.some(j => j.id === id)) { respond(res, 404, "Job not found", "text/plain; charset=utf-8"); return; }
         respond(res, 200, renderJobInspector(report, ledger, id)); return;
       }
-      respond(res, 200, renderReviewDashboard(report, ledger, csrf, running ? "Execução em andamento. Atualize para acompanhar." : runState.status === "failed" ? "Última execução falhou; relatório anterior preservado." : runState.status === "completed" ? "Última execução concluída." : "", Boolean(syntheticInputFile)));
+      const progressRows = jobProgress.map(job => `<tr><td>${htmlEscape(job.id)}</td><td>${htmlEscape(job.status)}</td><td>${htmlEscape(job.stage)}</td><td>${job.completed}/${job.total}</td></tr>`).join("");
+      const progressHtml = progressRows ? `<section><h2>Progresso dos jobs (execução atual)</h2><table><thead><tr><th>Job</th><th>Status</th><th>Última etapa</th><th>Etapas</th></tr></thead><tbody>${progressRows}</tbody></table></section>` : "";
+      const dashboard = renderReviewDashboard(report, ledger, csrf, running ? "Execução em andamento. Atualize para acompanhar." : runState.status === "failed" ? "Última execução falhou; relatório anterior preservado." : runState.status === "completed" ? "Última execução concluída." : "", Boolean(syntheticInputFile));
+      respond(res, 200, dashboard.replace("<h2>Histórico</h2>", progressHtml + "<h2>Histórico</h2>"));
     } catch {
       respond(res, 400, "Invalid or stale review; refresh the dashboard and verify the report.", "text/plain; charset=utf-8");
     }
