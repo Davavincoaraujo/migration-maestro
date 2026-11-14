@@ -54,7 +54,7 @@ if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFi
       for (const [index, plan] of plans.entries()) {
         if (plan.binding !== "explicit_local_verified" || plan.taskPacket.task === "investigate") continue;
         const filename = join(dir, "task-packet-" + (index + 1) + ".json");
-        await writeFile(filename, JSON.stringify(plan.taskPacket, null, 2) + "\\n", { mode: 0o600 });
+        await writeFile(filename, JSON.stringify(plan.taskPacket, null, 2) + "\n", { mode: 0o600 });
       }
     }
     process.stdout.write(JSON.stringify({
