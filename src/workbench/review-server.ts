@@ -224,7 +224,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Adobe AEM — Páginas</title>' +
           businessTheme + '</head><body><header><h1>Páginas no Adobe AEM</h1><p>Consulta de metadados no Author local</p></header><main><nav><a href="/">Visão geral</a><a href="/aem/status/view">Conexão AEM</a><a href="/agents">Etapas</a></nav><aside>' +
           htmlEscape(result.message) + '</aside><section><h2>Páginas encontradas: ' + result.pages.length + '</h2><p>Raiz configurada: ' +
-          htmlEscape(result.root || "não configurada") + '</p><p>Esta consulta mostra apenas páginas filhas diretas, no máximo 100. Não altera nem publica conteúdo.</p>' +
+          htmlEscape(result.root || "não configurada") + '</p><p>Esta consulta mostra a página selecionada e suas páginas filhas diretas, até 100 registros. Não altera nem publica conteúdo.</p>' +
           (result.truncated ? '<p>Resultado limitado a 100 páginas.</p>' : "") +
           '<table><thead><tr><th>Título</th><th>Identificador</th><th>Possui conteúdo</th></tr></thead><tbody>' +
           (rows || '<tr><td colspan="3">Nenhuma página disponível para exibição.</td></tr>') +

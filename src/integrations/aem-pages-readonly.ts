@@ -17,10 +17,19 @@ export function parseAemAuthorUrl(value: string): { origin: string; root: string
   }
   return { origin: url.origin, root: url.pathname.replace(/^\/sites\.html/, "") };
 }
-function metadata(value: unknown): AemPageSummary[] {
+function metadata(value: unknown, root: string): AemPageSummary[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid AEM metadata");
-  const nodes = Object.entries(value as Record<string, unknown>);
+  const document = value as Record<string, unknown>;
+  const nodes = Object.entries(document);
   const result: AemPageSummary[] = [];
+  // AEM .1.json returns the selected cq:Page itself, plus its direct child nodes.
+  if (document["jcr:primaryType"] === "cq:Page") {
+    const content = document["jcr:content"];
+    const props = content && typeof content === "object" && !Array.isArray(content) ? content as Record<string, unknown> : {};
+    const name = root.split("/").at(-1) ?? "root";
+    const title = typeof props["jcr:title"] === "string" ? props["jcr:title"].slice(0, 120) : name;
+    result.push({ name, title, hasContent: Boolean(content) });
+  }
   for (const [name, node] of nodes) {
     if (result.length === 100) break;
     if (!/^[A-Za-z0-9_-]{1,100}$/.test(name) || !node || typeof node !== "object" || Array.isArray(node)) continue;
@@ -76,8 +85,8 @@ export async function readLocalAemPages(env: NodeJS.ProcessEnv = process.env, fe
       }
     } finally { reader.releaseLock(); }
     const raw: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    const pages = metadata(raw);
-    return { state: "connected", message: "Metadados consultados no AEM Author local (somente leitura).", root: author.root, pages, truncated: pages.length === 100 };
+    const pages = metadata(raw, author.root);
+    return { state: "connected", message: pages.length ? "Páginas identificadas no AEM Author local (somente leitura)." : "AEM respondeu, mas não foram encontrados nós cq:Page neste nível. Verifique a raiz e as permissões.", root: author.root, pages, truncated: pages.length === 100 };
   } catch {
     return empty("unavailable", "Não foi possível consultar o AEM local. Confira conexão e permissões.", author.root);
   }
