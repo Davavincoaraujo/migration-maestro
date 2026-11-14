@@ -30,6 +30,7 @@ export async function runEvidenceBatch(
   jobs: readonly EvidenceBatchJob[],
   store: CheckpointStore,
   options: QueueOptions,
+  onProgress?: (id: string, stage: string, completed: number, total: number) => void,
 ): Promise<QueueOutcome<Checkpoint>[]> {
   const seen = new Set<string>();
   for (const job of jobs) {
@@ -45,6 +46,6 @@ export async function runEvidenceBatch(
         if (signal.aborted) throw new Error("Cancelled");
         return step.run(input, previous);
       },
-    })), store);
+    })), store, (stage, completed, total) => onProgress?.(job.id, stage, completed, total));
   }), options);
 }
