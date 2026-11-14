@@ -13,5 +13,5 @@ export function renderWorkbenchHtml(report: WorkbenchReport): string {
 </head><body><h1>Migration Maestro</h1><p>Relatório sintético local — somente leitura. Nenhuma publicação AEM autorizada.</p>
 <p class="summary">Total: ${report.summary.total} · Revisão: ${report.summary.reviewRequired} · Bloqueados: ${report.summary.blocked} · Falhas: ${report.summary.failed} · Cancelados: ${report.summary.cancelled}</p>
 <table><thead><tr><th>Job</th><th>Status</th><th>Componentes</th><th>Pendências</th><th>Etapas</th></tr></thead><tbody>${rows}</tbody></table>
-<p>Etapas concluídas registradas: ${report.metrics.stageExecutions}. Custo estimado de chamadas de IA: R$ 0 (nenhuma chamada).</p></body></html>`;
+<p>Etapas concluídas: ${report.metrics.completedStages} · Etapas executadas nesta rodada: ${report.metrics.stageExecutions} · Checkpoints reutilizados: ${report.metrics.reusedCheckpoints} · Duração da rodada: ${report.metrics.elapsedMs} ms. Custo de IA: R$ 0 (nenhuma chamada).</p></body></html>`;
 }
