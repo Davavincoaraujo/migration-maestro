@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { verifyBoundComponent } from "./component-binding-resolver.js";
 import type { UePatternConfig } from "./local-ue-pattern.js";
 import type { TaskPacket } from "./autopilot-task-packet.js";
-export interface Handoff { status: "prepared"; executionAuthorized: false; requiresHumanReview: true; task: TaskPacket["task"]; }
+export interface Handoff { status: "prepared"; executionAuthorized: false; requiresHumanReview: true; task: TaskPacket["task"]; worktree: "clean" | "modified"; }
 export function validateHandoffTask(value: unknown): TaskPacket {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_TASK_PACKET");
   const packet = value as TaskPacket;
@@ -41,7 +41,7 @@ export async function prepareLocalHandoff(config: UePatternConfig, componentPath
   const project = await realpath(config.projectDirectory);
   if (!(await stat(project)).isDirectory()) throw new Error("PROJECT_UNAVAILABLE");
   const status = await gitStatus(project);
-  if (status.trim()) throw new Error("PROJECT_HAS_CHANGES");
+  // A read-only handoff never touches the project. Preserve dirty-worktree information for future executors.
   const localDir = resolve(outputDir);
   const workspace = await realpath(resolve("./local-output")).catch(() => null);
   if (!workspace || !inside(workspace, localDir)) throw new Error("INVALID_OUTPUT_DIRECTORY");
@@ -56,6 +56,7 @@ export async function prepareLocalHandoff(config: UePatternConfig, componentPath
     "Component: " + componentPath,
     "",
     "No permission to modify files, run autonomous agents, publish or open PRs.",
+    "Tracked worktree at preparation: " + (status.trim() ? "modified" : "clean") + ". Any future executor must use an isolated clean worktree.",
     "Human must verify that the catalog candidate actually corresponds to this component.",
     "",
     "## Steps",
@@ -69,5 +70,5 @@ export async function prepareLocalHandoff(config: UePatternConfig, componentPath
     "",
   ].join("\n");
   await writeFile(filename, markdown, { flag: "wx", mode: 0o600 });
-  return { status: "prepared", executionAuthorized: false, requiresHumanReview: true, task: packet.task };
+  return { status: "prepared", executionAuthorized: false, requiresHumanReview: true, task: packet.task, worktree: status.trim() ? "modified" : "clean" };
 }
