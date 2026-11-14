@@ -29,7 +29,8 @@
     "ue:gate": "tsx src/cli-ue-gate.ts",
     "autopilot:plan": "tsx src/cli-autopilot-plan.ts",
     "autopilot:resolve": "tsx src/cli-autopilot-resolve.ts",
-    "analyst:bindings": "tsx src/cli-analyst-bindings.ts"
+    "analyst:bindings": "tsx src/cli-analyst-bindings.ts",
+    "autopilot:handoff": "tsx src/cli-autopilot-handoff.ts"
   },
   "engines": {
     "node": ">=20"
