@@ -50,7 +50,8 @@ export function parseSpecification(raw: unknown): Specification {
   for (const req of requirements) visit(req.id);
   return structuredClone({ schemaVersion: 1, projectId: s.projectId, title: s.title, entities, relations, requirements } as Specification);
 }
-const safe = (s: string): string => s.replace(/[^A-Za-z0-9_ .,:()-]/g, " ").slice(0, 120);
+const safe = (s: string): string => s.replace(/https?:\/\/\S+/gi, " ").replace(/[^A-Za-z0-9_ .,:()-]/g, " ").slice(0, 120);
+const safeMultiplicity = (s: string): string => s.replace(/[^0-9.*]/g, "").slice(0, 20);
 export function buildArtifacts(input: Specification): Artifacts {
   const s = parseSpecification(input);
   const classes = ["classDiagram"];
@@ -62,7 +63,7 @@ export function buildArtifacts(input: Specification): Artifacts {
   }
   for (const rel of s.relations) {
     const edge = rel.kind === "composition" ? "*--" : rel.kind === "inheritance" ? "<|--" : "--";
-    classes.push(rel.from + ' "' + safe(rel.fromMultiplicity) + '" ' + edge + ' "' + safe(rel.toMultiplicity) + '" ' + rel.to);
+    classes.push(rel.from + ' "' + safeMultiplicity(rel.fromMultiplicity) + '" ' + edge + ' "' + safeMultiplicity(rel.toMultiplicity) + '" ' + rel.to);
   }
   const sequence = ["sequenceDiagram", "participant Analytics", "participant Maestro", "participant Reviewer"];
   for (const req of s.requirements) {
