@@ -1,3 +1,4 @@
+import { renderUmlClassDiagram } from "./uml-class-diagram.js";
 import { defaultMigrationAgents, planLocalAgentGraph } from "../orchestration/agent-graph.js";
 import type { AgentVisualState } from "./agent-graph-html.js";
 
@@ -5,8 +6,9 @@ const escape = (s: string): string => s.replace(/[&<>"']/g, c => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[c] ?? c);
 
-export type DiagramKind = "execution" | "components" | "sequence";
+export type DiagramKind = "execution" | "components" | "sequence" | "classes";
 export function renderMigrationDiagram(kind: DiagramKind, states: readonly AgentVisualState[] = []): string {
+  if (kind === "classes") return renderUmlClassDiagram();
   if (kind === "execution") {
     const plan = planLocalAgentGraph(defaultMigrationAgents);
     const status = new Map(states.map(s => [s.id, s.status]));
@@ -50,11 +52,11 @@ function svg(title: string, width: number, height: number, body: string): string
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escape(title) + '" width="' + width + '" height="' + height + '"><title>' + escape(title) + '</title><defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#526d88"/></marker></defs>' + body + '</svg>';
 }
 export function renderDiagramsPage(kind: DiagramKind, states: readonly AgentVisualState[], runStatus: string): string {
-  const links = (["execution", "components", "sequence"] as const).map(k =>
-    '<a href="/diagrams?kind=' + k + '">' + ({ execution: "Execução", components: "Componentes UML", sequence: "Sequência UML" })[k] + '</a>'
+  const links = (["execution", "classes", "components", "sequence"] as const).map(k =>
+    '<a href="/diagrams?kind=' + k + '">' + ({ execution: "Execução", classes: "Classes UML", components: "Componentes UML", sequence: "Sequência UML" })[k] + '</a>'
   ).join(" · ");
   const agentLinks = ["discovery", "evidence", "mapping", "composition", "quality", "review"].map(id =>
     '<a href="/agents/inspect?id=' + id + '">' + id + '</a>'
   ).join(" · ");
-  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Migration Maestro — Diagramas</title><style>body{font:16px system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;color:#152432}nav{margin:1rem 0 2rem}a{color:#175a9a}aside{padding:12px;background:#eef3f9;border-radius:8px}</style></head><body><p><a href="/agents">Voltar aos agentes</a></p><h1>Diagramas de migração</h1><nav>' + links + '</nav><h2>Inspecionar agente</h2><nav>' + agentLinks + '</nav><aside>Estado local: ' + escape(runStatus) + '. Simulação sem escrita no AEM. Revisão humana obrigatória.</aside><figure>' + renderMigrationDiagram(kind, states) + '<figcaption>' + escape(kind) + ' — visualização local, atualizada a cada 5 segundos.</figcaption></figure></body></html>';
+  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Migration Maestro — Diagramas</title><style>body{font:16px system-ui,sans-serif;max-width:1300px;margin:2rem auto;padding:0 1rem;color:#152432}nav{margin:1rem 0 2rem}a{color:#175a9a}aside{padding:12px;background:#eef3f9;border-radius:8px}</style></head><body><p><a href="/agents">Voltar aos agentes</a></p><h1>Diagramas de migração</h1><nav>' + links + '</nav><h2>Inspecionar agente</h2><nav>' + agentLinks + '</nav><aside>Estado local: ' + escape(runStatus) + '. Simulação sem escrita no AEM. Revisão humana obrigatória.</aside><figure>' + renderMigrationDiagram(kind, states) + '<figcaption>' + escape(kind) + ' — visualização local, atualizada a cada 5 segundos.</figcaption></figure></body></html>';
 }
