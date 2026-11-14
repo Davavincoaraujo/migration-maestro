@@ -1,3 +1,6 @@
+import { renderAgentGraph, type AgentVisualState } from "./agent-graph-html.js";
+import { createSyntheticAgentHandlers, executeLocalAgentGraph } from "../orchestration/local-agent-executor.js";
+import { FileCheckpointStore } from "../autopilot/file-checkpoint-store.js";
 import { MaestroEventJournal } from "../integrations/event-journal.js";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -62,6 +65,8 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
   type JobProgress = { id: string; status: "queued" | "running" | "review-required" | "blocked" | "failed" | "cancelled"; stage: string; completed: number; total: number };
   let jobProgress: JobProgress[] = [];
   const journal = new MaestroEventJournal();
+  let agentRun: { status: "idle" | "running" | "completed" | "failed"; jobId?: string } = { status: "idle" };
+  let agentStates: AgentVisualState[] = [];
   let runState: { status: "idle" | "running" | "completed" | "failed"; startedAt?: string; finishedAt?: string } = { status: "idle" };
   const server = createServer(async (req, res) => {
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -69,7 +74,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -77,7 +82,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         // An explicit foreign Origin or cross-site Fetch Metadata is always rejected.
         const requestOrigin = req.headers.origin;
         const fetchSite = req.headers["sec-fetch-site"];
-        if ((requestUrl.pathname !== "/review" && requestUrl.pathname !== "/run") ||
+        if ((requestUrl.pathname !== "/review" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/agents/run") ||
             (requestOrigin !== undefined && requestOrigin !== origin && requestOrigin !== "null") ||
             (fetchSite !== undefined && fetchSite !== "same-origin" && fetchSite !== "none")) {
           respond(res, 403, "Forbidden: request origin", "text/plain; charset=utf-8"); return;
@@ -85,9 +90,43 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         if (!/^application\/x-www-form-urlencoded(?:\s*;\s*charset\s*=\s*utf-8)?$/i.test(req.headers["content-type"] ?? "")) {
           respond(res, 415, "Unsupported form content type", "text/plain; charset=utf-8"); return;
         }
+        if (requestUrl.pathname === "/agents/run") {
+          if (!syntheticInputFile) { respond(res, 403, "Synthetic runner not configured", "text/plain; charset=utf-8"); return; }
+          if (running || busy || agentRun.status === "running") { respond(res, 409, "Runner busy", "text/plain; charset=utf-8"); return; }
+          const params = new URLSearchParams(await bodyText(req));
+          const jobId = params.get("jobId") ?? "";
+          if (params.size !== 2 || params.getAll("csrf").length !== 1 ||
+              params.getAll("jobId").length !== 1 || !secureEqual(params.get("csrf") ?? "", csrf) ||
+              !validId(jobId)) { respond(res, 403, "Invalid agent run request", "text/plain; charset=utf-8"); return; }
+          const raw: unknown = JSON.parse(await readFile(resolve(syntheticInputFile), "utf8"));
+          if (!Array.isArray(raw) || raw.length > 100 || !raw.some(item => item && typeof item === "object" && item.id === jobId)) {
+            respond(res, 400, "Unknown synthetic job", "text/plain; charset=utf-8"); return;
+          }
+          agentRun = { status: "running", jobId };
+          agentStates = [];
+          void (async () => {
+            try {
+              const fixture = (raw as EvidenceBatchJob[]).find(item => item.id === jobId);
+              if (!fixture) throw new Error("Missing job");
+              const store = new FileCheckpointStore(join(base, "agent-checkpoints"));
+              await executeLocalAgentGraph(jobId, fixture.input, createSyntheticAgentHandlers(), store, undefined, event => {
+                if (event.stage === "checkpoint-reused") {
+                  agentStates = ["discovery", "evidence", "mapping", "composition", "quality"].map(id => ({ id, status: "reused" }));
+                } else {
+                  agentStates = [...agentStates.filter(item => item.id !== event.agentId), { id: event.agentId, status: "completed" }];
+                }
+              });
+              agentRun = { status: "completed", jobId };
+            } catch {
+              agentRun = { status: "failed", jobId };
+            }
+          })();
+          res.writeHead(303, { Location: "/agents", "Cache-Control": "no-store" });
+          res.end(); return;
+        }
         if (requestUrl.pathname === "/run") {
           if (!syntheticInputFile) { respond(res, 403, "Synthetic runner not configured", "text/plain; charset=utf-8"); return; }
-          if (running || busy) { respond(res, 409, "Run already in progress", "text/plain; charset=utf-8"); return; }
+          if (running || busy || agentRun.status === "running") { respond(res, 409, "Run already in progress", "text/plain; charset=utf-8"); return; }
           const params = new URLSearchParams(await bodyText(req));
           if (params.size !== 1 || params.getAll("csrf").length !== 1 ||
               !secureEqual(params.get("csrf") ?? "", csrf)) {
@@ -128,7 +167,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.writeHead(303, { Location: "/", "Cache-Control": "no-store" });
           res.end(); return;
         }
-        if (busy || running) { respond(res, 409, "Review in progress", "text/plain; charset=utf-8"); return; }
+        if (busy || running || agentRun.status === "running") { respond(res, 409, "Review in progress", "text/plain; charset=utf-8"); return; }
         busy = true;
         try {
           const params = new URLSearchParams(await bodyText(req));
@@ -150,6 +189,15 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.end(); return;
         } finally { busy = false; }
       }
+      if (requestUrl.pathname === "/agents/status") {
+        respond(res, 200, JSON.stringify({ ...agentRun, agents: agentStates }), "application/json; charset=utf-8"); return;
+      }
+      if (requestUrl.pathname === "/agents") {
+        const graph = renderAgentGraph(agentStates);
+        const form = syntheticInputFile ? '<form method="post" action="/agents/run"><input type="hidden" name="csrf" value="' + csrf + '"><label>ID do job sintético <input name="jobId" required maxlength="80" pattern="[A-Za-z0-9_-]{1,80}" value="demo"></label><button type="submit">Executar agentes locais</button></form>' : "<p>Inicie o dashboard com um arquivo de jobs sintéticos para executar.</p>";
+        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Migration Maestro — Agentes</title></head><body style="font:16px system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem"><p><a href="/">Voltar ao dashboard</a></p><h1>Centro de orquestração</h1><p>Execução: ' + htmlEscape(agentRun.status) + (agentRun.jobId ? " — " + htmlEscape(agentRun.jobId) : "") + '</p>' + form + graph + '<p>Resultado: simulação, sem chamadas a modelos ou escrita no AEM. Revisão humana permanece separada.</p></body></html>';
+        respond(res, 200, html); return;
+      }
       if (requestUrl.pathname === "/events") {
         const cursor = requestUrl.searchParams.get("after") ?? "0";
         if (!/^(0|[1-9][0-9]{0,12})$/.test(cursor)) { respond(res, 400, "Invalid cursor", "text/plain; charset=utf-8"); return; }
@@ -168,7 +216,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       const progressRows = jobProgress.map(job => `<tr><td>${htmlEscape(job.id)}</td><td>${htmlEscape(job.status)}</td><td>${htmlEscape(job.stage)}</td><td>${job.completed}/${job.total}</td></tr>`).join("");
       const progressHtml = progressRows ? `<section><h2>Progresso dos jobs (execução atual)</h2><table><thead><tr><th>Job</th><th>Status</th><th>Última etapa</th><th>Etapas</th></tr></thead><tbody>${progressRows}</tbody></table></section>` : "";
       const dashboard = renderReviewDashboard(report, ledger, csrf, running ? "Execução em andamento. Atualize para acompanhar." : runState.status === "failed" ? "Última execução falhou; relatório anterior preservado." : runState.status === "completed" ? "Última execução concluída." : "", Boolean(syntheticInputFile));
-      respond(res, 200, dashboard.replace("<h2>Histórico</h2>", progressHtml + "<h2>Histórico</h2>"));
+      respond(res, 200, dashboard.replace("<h2>Histórico</h2>", '<p><a href="/agents">Abrir centro de orquestração de agentes</a></p>' + progressHtml + "<h2>Histórico</h2>"));
     } catch {
       respond(res, 400, "Invalid or stale review; refresh the dashboard and verify the report.", "text/plain; charset=utf-8");
     }
