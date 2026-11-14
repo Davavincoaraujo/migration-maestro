@@ -37,6 +37,7 @@ export async function runCheckpointed(
   input: unknown,
   steps: readonly PipelineStep[],
   store: CheckpointStore,
+  onStage?: (stage: string, completed: number, total: number) => void,
 ): Promise<Checkpoint> {
   if (!/^[a-f0-9]{20}$/.test(jobId)) throw new Error("Invalid job ID");
   if (!steps.length || steps.length > 30 ||
@@ -48,7 +49,10 @@ export async function runCheckpointed(
       existing.completed.some((id, i) => steps[i]?.id !== id))) throw new Error("Checkpoint mismatch");
   const checkpoint: Checkpoint = existing ? structuredClone(existing) :
     { version: 1, jobId, inputDigest, completed: [], outputs: Object.create(null) as Record<string, unknown>, state: "running" };
-  if (checkpoint.state === "awaiting-review") return checkpoint;
+  if (checkpoint.state === "awaiting-review") {
+    onStage?.("checkpoint-reused", checkpoint.completed.length, steps.length);
+    return checkpoint;
+  }
   for (const step of steps.slice(checkpoint.completed.length)) {
     try {
       const output = await step.run(input, structuredClone(checkpoint.outputs));
@@ -60,6 +64,7 @@ export async function runCheckpointed(
       checkpoint.completed.push(step.id);
       checkpoint.state = "running";
       await store.put(checkpoint);
+      onStage?.(step.id, checkpoint.completed.length, steps.length);
     } catch {
       checkpoint.state = "failed";
       await store.put(checkpoint);
