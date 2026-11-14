@@ -1,0 +1,4 @@
+import type { Agent, Finding, LegacyPage, MigratedPage } from "./types.js";
+export const discoveryAgent: Agent<LegacyPage, LegacyPage> = { name: "discovery", async run(page) { if (!page.path.startsWith("/")) throw new Error("Path must be absolute"); return page; } };
+export const transformationAgent: Agent<LegacyPage, MigratedPage> = { name: "transformation", async run(page) { return { path: page.path, title: page.title, components: [{ resourceType: "demo/components/text", props: { text: page.body } }] }; } };
+export const validationAgent: Agent<MigratedPage, Finding[]> = { name: "validation", async run(page) { const findings: Finding[] = []; if (!page.title.trim()) findings.push({ level: "error", message: "Missing title" }); if (!page.components.length) findings.push({ level: "error", message: "No components" }); if (!page.path.startsWith("/")) findings.push({ level: "error", message: "Invalid path" }); return findings; } };

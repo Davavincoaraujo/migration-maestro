@@ -1,0 +1,12 @@
+[
+  {
+    "path": "/demo/cultura",
+    "title": "Nossa cultura",
+    "body": "Conteúdo demonstrativo, sem informações corporativas."
+  },
+  {
+    "path": "/demo/sobre",
+    "title": "Sobre",
+    "body": "Página fictícia para testar a migração."
+  }
+]
