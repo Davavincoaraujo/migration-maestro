@@ -22,7 +22,8 @@
     "analyst:shape": "tsx src/cli-analyst-shape.ts",
     "analyst:matches": "tsx src/cli-analyst-matches.ts",
     "analyst:match": "tsx src/cli-analyst-match.ts",
-    "analyst:inspect-matches": "tsx src/cli-analyst-inspect-matches.ts"
+    "analyst:inspect-matches": "tsx src/cli-analyst-inspect-matches.ts",
+    "analyst:evidence": "tsx src/cli-analyst-evidence.ts"
   },
   "engines": {
     "node": ">=20"
