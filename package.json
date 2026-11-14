@@ -27,7 +27,8 @@
     "analyst:evidence-arrays": "tsx src/cli-analyst-evidence-arrays.ts",
     "analyst:compatibility": "tsx src/cli-analyst-compatibility.ts",
     "ue:gate": "tsx src/cli-ue-gate.ts",
-    "autopilot:plan": "tsx src/cli-autopilot-plan.ts"
+    "autopilot:plan": "tsx src/cli-autopilot-plan.ts",
+    "autopilot:resolve": "tsx src/cli-autopilot-resolve.ts"
   },
   "engines": {
     "node": ">=20"
