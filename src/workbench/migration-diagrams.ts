@@ -1,4 +1,5 @@
-import { renderUmlClassDiagram } from "./uml-class-diagram.js";
+import { readFileSync } from "node:fs";
+import { extractUmlModel, renderUmlModel, umlSourceFiles } from "./uml-ast.js";
 import { defaultMigrationAgents, planLocalAgentGraph } from "../orchestration/agent-graph.js";
 import type { AgentVisualState } from "./agent-graph-html.js";
 
@@ -8,7 +9,7 @@ const escape = (s: string): string => s.replace(/[&<>"']/g, c => ({
 
 export type DiagramKind = "execution" | "components" | "sequence" | "classes";
 export function renderMigrationDiagram(kind: DiagramKind, states: readonly AgentVisualState[] = []): string {
-  if (kind === "classes") return renderUmlClassDiagram();
+  if (kind === "classes") return renderUmlModel(extractUmlModel(Object.fromEntries(umlSourceFiles.map(path => [path, readFileSync(new URL("../../" + path, import.meta.url), "utf8")]))));
   if (kind === "execution") {
     const plan = planLocalAgentGraph(defaultMigrationAgents);
     const status = new Map(states.map(s => [s.id, s.status]));
