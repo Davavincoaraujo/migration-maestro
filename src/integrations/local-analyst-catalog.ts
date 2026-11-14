@@ -17,7 +17,9 @@ export function validateCatalogRequest(request: CatalogRequest): { name: string;
   }
   throw new Error("ANALYST_TOOL_DENIED");
 }
-export async function probeAnalystCatalog(directory: string | undefined, request: CatalogRequest): Promise<{ connected: true; tool: string; resultReceived: true; isError: false }> {
+export interface LocalCatalogResponse { connected: true; tool: string; resultReceived: true; isError: false; content: unknown[]; }
+/** Raw MCP content stays in memory in the local process. Callers must not log or upload it. */
+export async function fetchAnalystCatalogLocal(directory: string | undefined, request: CatalogRequest): Promise<LocalCatalogResponse> {
   const call = validateCatalogRequest(request);
   if (!directory || !isAbsolute(directory)) throw new Error("ANALYST_DIRECTORY_NOT_CONFIGURED");
   const root = await realpath(directory).catch(() => { throw new Error("ANALYST_DIRECTORY_NOT_FOUND"); });
@@ -26,18 +28,18 @@ export async function probeAnalystCatalog(directory: string | undefined, request
   const rel = relative(root, entry);
   if (rel === ".." || rel.startsWith(".." + sep) || isAbsolute(rel)) throw new Error("ANALYST_ENTRY_OUTSIDE_PROJECT");
   const child = spawn(process.execPath, [entry], { cwd: root, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "ignore"] });
-  return new Promise((resolve, reject) => {
+  return new Promise<LocalCatalogResponse>((resolve, reject) => {
     let finished = false;
     const timer = setTimeout(() => finish(new Error("ANALYST_TIMEOUT")), 15000);
     const reader = createInterface({ input: child.stdout });
-    function finish(error?: Error) {
+    function finish(error?: Error, content?: unknown[]) {
       if (finished) return;
       finished = true;
       clearTimeout(timer);
       reader.close();
       child.kill();
       if (error) reject(error);
-      else resolve({ connected: true, tool: call.name, resultReceived: true, isError: false });
+      else resolve({ connected: true, tool: call.name, resultReceived: true, isError: false, content: content ?? [] });
     }
     function send(id: number, method: string, params: object) {
       child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
@@ -57,10 +59,16 @@ export async function probeAnalystCatalog(directory: string | undefined, request
           send(3, "tools/call", call);
         } else if (msg.id === 3) {
           if (msg.error || msg.result?.isError || !Array.isArray(msg.result?.content)) return finish(new Error("ANALYST_CATALOG_CALL_FAILED"));
-          finish();
+          finish(undefined, msg.result.content);
         }
       } catch { /* Never log tool output. */ }
     });
     send(1, "initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "migration-maestro", version: "0.1.0" } });
   });
+}
+
+/** Backwards-compatible status-only smoke test. */
+export async function probeAnalystCatalog(directory: string | undefined, request: CatalogRequest): Promise<{ connected: true; tool: string; resultReceived: true; isError: false }> {
+  const { content: _privateContent, ...status } = await fetchAnalystCatalogLocal(directory, request);
+  return status;
 }
