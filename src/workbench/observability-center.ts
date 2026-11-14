@@ -33,7 +33,7 @@ export interface ObservabilitySummary {
 }
 /** Aggregates bounded, persisted metadata only; no handler inputs or outputs. */
 export function summarizeAgentHistory(entries: readonly AgentHistoryEntry[]): ObservabilitySummary {
-  const agents = defaultMigrationAgents.filter(n => n.execution !== "human").map(n => {
+  const agents = defaultMigrationAgents.filter(n => n.execution !== "human-gate").map(n => {
     const events = entries.filter(e => e.agentId === n.id);
     const durations = events.filter(e => (e.kind === "agent.completed" || e.kind === "agent.reused") && e.elapsedMs !== undefined);
     const totalElapsedMs = durations.reduce((sum, e) => sum + (e.elapsedMs ?? 0), 0);
