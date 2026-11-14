@@ -17,10 +17,10 @@ function inside(root: string, path: string): boolean {
   return rel === "" || (rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel));
 }
 export async function verifyUePattern(config: UePatternConfig): Promise<{ cli: string; project: string }> {
-  const cliRoot = await realpath(config.cliDirectory);
-  const project = await realpath(config.projectDirectory);
+  const cliRoot = await realpath(config.cliDirectory).catch(() => { throw new Error("UE_PATTERN_DIRECTORY_NOT_FOUND"); });
+  const project = await realpath(config.projectDirectory).catch(() => { throw new Error("COMPONENT_PROJECT_DIRECTORY_NOT_FOUND"); });
   if (!(await stat(cliRoot)).isDirectory() || !(await stat(project)).isDirectory()) throw new Error("Invalid directory");
-  const cli = await realpath(join(cliRoot, "dist", "cli.js"));
+  const cli = await realpath(join(cliRoot, "dist", "cli.js")).catch(() => { throw new Error("UE_PATTERN_CLI_NOT_BUILT"); });
   if (!inside(cliRoot, cli) || !(await stat(cli)).isFile()) throw new Error("Invalid ue-pattern CLI");
   return { cli, project };
 }
@@ -55,7 +55,7 @@ export async function runUePatternReadOnly(
     child.on("close", code => {
       clearTimeout(timeout);
       if (stopped) return;
-      if (code !== 0) { reject(new Error("ue-pattern command failed")); return; }
+      if (code !== 0) { reject(new Error("UE_PATTERN_COMMAND_FAILED")); return; }
       resolve({ command, output });
     });
   });

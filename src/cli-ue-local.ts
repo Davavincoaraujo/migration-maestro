@@ -13,8 +13,15 @@ if (!config) {
     try {
       const result = await runUePatternReadOnly(config, command, argument);
       process.stdout.write(result.output + "\n");
-    } catch {
-      process.stderr.write("Falha na consulta local ue-pattern. Confira caminhos, build e permissões.\n");
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      const hints: Record<string, string> = {
+        UE_PATTERN_DIRECTORY_NOT_FOUND: "Diretório do ue-pattern não encontrado. Confira MAESTRO_UE_PATTERN_DIR.",
+        COMPONENT_PROJECT_DIRECTORY_NOT_FOUND: "Diretório de componentes não encontrado. Confira MAESTRO_COMPONENTS_PROJECT_DIR.",
+        UE_PATTERN_CLI_NOT_BUILT: "CLI do ue-pattern ausente. Execute npm install && npm run build no ue-pattern.",
+        UE_PATTERN_COMMAND_FAILED: "A CLI do ue-pattern retornou erro. Execute diretamente: node \"$MAESTRO_UE_PATTERN_DIR/dist/cli.js\" topicos --projeto \"$MAESTRO_COMPONENTS_PROJECT_DIR\".",
+      };
+      process.stderr.write((hints[code] ?? "Falha na consulta local ue-pattern. Confira permissões e configuração.") + "\n");
       process.exitCode = 1;
     }
   }
