@@ -19,7 +19,7 @@ test("connector registry denies unapproved capabilities and invalid responses", 
   registry.register({
     id: "synthetic-source",
     capabilities: ["source.read"],
-    async invoke(request) { return { ...request, data: { synthetic: true }, readOnly: true }; },
+    async invoke(request) { return { ...request, data: { synthetic: true }, readOnly: true as const }; },
   });
   const response = await registry.invoke("synthetic-source", { capability: "source.read", jobId: "demo" });
   assert.deepEqual(response.data, { synthetic: true });
@@ -27,7 +27,7 @@ test("connector registry denies unapproved capabilities and invalid responses", 
   await assert.rejects(registry.invoke("missing", { capability: "source.read", jobId: "demo" }));
   assert.throws(() => registry.register({
     id: "unsafe", capabilities: ["source.write" as "source.read"],
-    async invoke(request) { return { ...request, data: null, readOnly: true }; },
+    async invoke(request) { return { ...request, data: null, readOnly: true as const }; },
   }));
   registry.register({
     id: "broken", capabilities: ["job.status"],
