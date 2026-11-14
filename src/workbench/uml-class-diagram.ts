@@ -1,6 +1,6 @@
 /** UML class diagram for the existing TypeScript contracts; no inferred runtime relationships. */
 const xml = (s: string): string => s.replace(/[&<>"']/g, c => ({
-  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "'": "&#39;",
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[c] ?? c);
 
 type ClassBox = {
