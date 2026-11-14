@@ -11,7 +11,8 @@
     "metadata:catalog": "tsx src/cli-catalog.ts",
     "workbench": "tsx src/cli-workbench.ts",
     "review": "tsx src/cli-review.ts",
-    "dashboard": "tsx src/cli-dashboard.ts"
+    "dashboard": "tsx src/cli-dashboard.ts",
+    "analytics": "tsx src/cli-analytics.ts"
   },
   "engines": {
     "node": ">=20"

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "projectId": "demo_migration",
+  "title": "Synthetic catalog migration",
+  "entities": [
+    {
+      "id": "Page",
+      "name": "Page",
+      "attributes": [
+        {
+          "name": "path",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "type": "string"
+        }
+      ],
+      "operations": [
+        {
+          "name": "validate",
+          "returns": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "Component",
+      "name": "Component",
+      "attributes": [
+        {
+          "name": "resourceType",
+          "type": "string"
+        }
+      ],
+      "operations": []
+    }
+  ],
+  "relations": [
+    {
+      "from": "Page",
+      "to": "Component",
+      "kind": "composition",
+      "fromMultiplicity": "1",
+      "toMultiplicity": "0..*"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ_001",
+      "title": "Discover pages",
+      "description": "Collect synthetic page metadata",
+      "acceptanceCriteria": [
+        "Every synthetic page has a path"
+      ],
+      "entityIds": [
+        "Page"
+      ],
+      "dependsOn": []
+    },
+    {
+      "id": "REQ_002",
+      "title": "Map components",
+      "description": "Map synthetic components to target types",
+      "acceptanceCriteria": [
+        "Every component has a resource type"
+      ],
+      "entityIds": [
+        "Page",
+        "Component"
+      ],
+      "dependsOn": [
+        "REQ_001"
+      ]
+    }
+  ]
+}
