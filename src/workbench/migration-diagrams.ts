@@ -53,5 +53,8 @@ export function renderDiagramsPage(kind: DiagramKind, states: readonly AgentVisu
   const links = (["execution", "components", "sequence"] as const).map(k =>
     '<a href="/diagrams?kind=' + k + '">' + ({ execution: "Execução", components: "Componentes UML", sequence: "Sequência UML" })[k] + '</a>'
   ).join(" · ");
+  const agentLinks = ["discovery", "evidence", "mapping", "composition", "quality", "review"].map(id =>
+    '<a href="/agents/inspect?id=' + id + '">' + id + '</a>'
+  ).join(" · ");
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Migration Maestro — Diagramas</title><style>body{font:16px system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;color:#152432}nav{margin:1rem 0 2rem}a{color:#175a9a}aside{padding:12px;background:#eef3f9;border-radius:8px}</style></head><body><p><a href="/agents">Voltar aos agentes</a></p><h1>Diagramas de migração</h1><nav>' + links + '</nav><aside>Estado local: ' + escape(runStatus) + '. Simulação sem escrita no AEM. Revisão humana obrigatória.</aside><figure>' + renderMigrationDiagram(kind, states) + '<figcaption>' + escape(kind) + ' — visualização local, atualizada a cada 5 segundos.</figcaption></figure></body></html>';
 }
