@@ -28,6 +28,8 @@ test("opt-in dashboard run executes synthetic jobs, reuses checkpoints and rejec
     assert.equal(denied.status, 403);
     const run = async () => fetch(base + "/run", { method: "POST", headers, body: new URLSearchParams({ csrf }), redirect: "manual" });
     assert.equal((await run()).status, 303);
+    const savedReport = await readFile(join(dir, "report.json"), "utf8");
+    assert.equal(savedReport.trimEnd().endsWith("}"), true);
     const first = JSON.parse(await readFile(join(dir, "report.json"), "utf8")) as { summary: { total: number; blocked: number }; metrics: { stageExecutions: number; reusedCheckpoints: number } };
     assert.equal(first.summary.total, 2);
     assert.equal(first.summary.blocked, 1);
