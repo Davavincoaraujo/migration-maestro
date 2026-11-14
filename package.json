@@ -5,12 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/cli.ts",
+    "metadata:export": "tsx src/cli-export-metadata.ts",
     "test": "tsx --test tests/*.test.ts",
     "check": "tsc --noEmit"
   },
-  "engines": {
-    "node": ">=20"
-  },
+  "engines": { "node": ">=20" },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
