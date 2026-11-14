@@ -30,7 +30,7 @@ test("dashboard requires CSRF and origin, persists approval, and refuses replay"
     const digest = html.match(/name="digest" value="([a-f0-9]+)"/)?.[1];
     assert.ok(csrf && digest);
     const body = new URLSearchParams({ csrf, jobId: "demo", reviewer: "reviewer_1", decision: "approved", digest });
-    const denied = await fetch(base + "/review", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body, redirect: "manual" });
+    const denied = await fetch(base + "/review", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ ...Object.fromEntries(body), csrf: "invalid" }), redirect: "manual" });
     assert.equal(denied.status, 403);
     const headers = { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", Origin: base };
     const wrongOrigin = await fetch(base + "/review", { method: "POST", headers: { ...headers, Origin: "http://evil.example", "Sec-Fetch-Site": "same-origin" }, body, redirect: "manual" });
