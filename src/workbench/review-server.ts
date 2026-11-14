@@ -1,3 +1,4 @@
+import { createMigrationIntake, listMigrationIntakes, migrationPlanSteps } from "./migration-intake.js";
 import { readLocalAemPages } from "../integrations/aem-pages-readonly.js";
 import { businessTheme } from "./business-theme.js";
 import { checkLocalAem } from "../integrations/local-aem-status.js";
@@ -43,7 +44,7 @@ export function renderReviewDashboard(report: WorkbenchReport, ledger: ReviewLed
     '<div class="kpi"><strong>' + report.summary.reviewRequired + '</strong><span>Aguardando aprovação</span></div>' +
     '<div class="kpi"><strong>' + report.summary.blocked + '</strong><span>Com impedimentos</span></div>' +
     '<div class="kpi"><strong>' + report.summary.failed + '</strong><span>Com falhas</span></div></div>';
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="10"><title>Migration Maestro — Visão geral</title>${businessTheme}</head><body><header><h1>Migration Maestro</h1><p>Painel de acompanhamento de migrações</p></header><main><nav aria-label="Navegação principal"><a href="/">Visão geral</a><a href="/agents">Etapas da migração</a><a href="/observability">Indicadores</a><a href="/diagrams">Fluxo visual</a><a href="/aem/status/view">Conexão AEM</a><a href="/aem/pages">Páginas AEM</a></nav><p class="intro">Acompanhe o progresso, identifique impedimentos e aprove planos com segurança.</p><aside><strong>Ambiente de demonstração.</strong> Os resultados são sintéticos. Aprovar um plano não publica páginas no AEM.</aside>${notice ? `<p role="status">${htmlEscape(notice)}</p>` : ""}${kpis}${canRun ? `<section><h2>Executar demonstração</h2><p>Inicia uma simulação local. Nenhuma página real será alterada.</p><form method="post" action="/run"><input type="hidden" name="csrf" value="${csrf}"><button type="submit">Executar lote sintético</button></form></section>` : ""}<section><h2>Páginas em acompanhamento (${report.summary.total})</h2><p class="muted">Revise as pendências antes de tomar uma decisão.</p><table><thead><tr><th>Página / tarefa</th><th>Situação</th><th>Componentes</th><th>Pendências</th><th>Decisão</th><th>Inspeção</th></tr></thead><tbody>${rows}</tbody></table></section><section><h2>Histórico</h2><ul>${history || "<li>Nenhuma decisão registrada</li>"}</ul></section><small>Etapas executadas: ${report.metrics.stageExecutions}; checkpoints reutilizados: ${report.metrics.reusedCheckpoints}. Servidor local, sem acesso corporativo automático.</small></main></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="10"><title>Migration Maestro — Visão geral</title>${businessTheme}</head><body><header><h1>Migration Maestro</h1><p>Painel de acompanhamento de migrações</p></header><main><nav aria-label="Navegação principal"><a href="/">Visão geral</a><a href="/migrations/new">Nova migração</a><a href="/agents">Etapas da migração</a><a href="/observability">Indicadores</a><a href="/diagrams">Fluxo visual</a><a href="/aem/status/view">Conexão AEM</a><a href="/aem/pages">Páginas AEM</a></nav><p class="intro">Acompanhe o progresso, identifique impedimentos e aprove planos com segurança.</p><aside><strong>Ambiente de demonstração.</strong> Os resultados são sintéticos. Aprovar um plano não publica páginas no AEM.</aside>${notice ? `<p role="status">${htmlEscape(notice)}</p>` : ""}${kpis}${canRun ? `<section><h2>Executar demonstração</h2><p>Inicia uma simulação local. Nenhuma página real será alterada.</p><form method="post" action="/run"><input type="hidden" name="csrf" value="${csrf}"><button type="submit">Executar lote sintético</button></form></section>` : ""}<section><h2>Páginas em acompanhamento (${report.summary.total})</h2><p class="muted">Revise as pendências antes de tomar uma decisão.</p><table><thead><tr><th>Página / tarefa</th><th>Situação</th><th>Componentes</th><th>Pendências</th><th>Decisão</th><th>Inspeção</th></tr></thead><tbody>${rows}</tbody></table></section><section><h2>Histórico</h2><ul>${history || "<li>Nenhuma decisão registrada</li>"}</ul></section><small>Etapas executadas: ${report.metrics.stageExecutions}; checkpoints reutilizados: ${report.metrics.reusedCheckpoints}. Servidor local, sem acesso corporativo automático.</small></main></body></html>`;
 }
 /** Read-only inspector uses only sanitized report fields, never raw source content. */
 export function renderJobInspector(report: WorkbenchReport, ledger: ReviewLedger, id: string): string {
@@ -87,7 +88,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history" && requestUrl.pathname !== "/agents/history/view" && requestUrl.pathname !== "/analytics/execution" && requestUrl.pathname !== "/observability" && requestUrl.pathname !== "/observability/data" && requestUrl.pathname !== "/aem/status" && requestUrl.pathname !== "/aem/status/view" && requestUrl.pathname !== "/aem/pages" && requestUrl.pathname !== "/aem/pages/data") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history" && requestUrl.pathname !== "/agents/history/view" && requestUrl.pathname !== "/analytics/execution" && requestUrl.pathname !== "/observability" && requestUrl.pathname !== "/observability/data" && requestUrl.pathname !== "/aem/status" && requestUrl.pathname !== "/aem/status/view" && requestUrl.pathname !== "/aem/pages" && requestUrl.pathname !== "/aem/pages/data" && requestUrl.pathname !== "/migrations/new" && requestUrl.pathname !== "/migrations") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -95,13 +96,24 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         // An explicit foreign Origin or cross-site Fetch Metadata is always rejected.
         const requestOrigin = req.headers.origin;
         const fetchSite = req.headers["sec-fetch-site"];
-        if ((requestUrl.pathname !== "/review" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/agents/run") ||
+        if ((requestUrl.pathname !== "/review" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/migrations/new") ||
             (requestOrigin !== undefined && requestOrigin !== origin && requestOrigin !== "null") ||
             (fetchSite !== undefined && fetchSite !== "same-origin" && fetchSite !== "none")) {
           respond(res, 403, "Forbidden: request origin", "text/plain; charset=utf-8"); return;
         }
         if (!/^application\/x-www-form-urlencoded(?:\s*;\s*charset\s*=\s*utf-8)?$/i.test(req.headers["content-type"] ?? "")) {
           respond(res, 415, "Unsupported form content type", "text/plain; charset=utf-8"); return;
+        }
+        if (requestUrl.pathname === "/migrations/new") {
+          const params = new URLSearchParams(await bodyText(req));
+          if (params.size !== 3 || params.getAll("csrf").length !== 1 ||
+              params.getAll("source").length !== 1 || params.getAll("destination").length !== 1 ||
+              !secureEqual(params.get("csrf") ?? "", csrf)) {
+            respond(res, 403, "Invalid migration request", "text/plain; charset=utf-8"); return;
+          }
+          try { await createMigrationIntake(base, params.get("source") ?? "", params.get("destination") ?? ""); }
+          catch { respond(res, 400, "Invalid migration input or intake limit", "text/plain; charset=utf-8"); return; }
+          res.writeHead(303, { Location: "/migrations", "Cache-Control": "no-store" }); res.end(); return;
         }
         if (requestUrl.pathname === "/agents/run") {
           if (!syntheticInputFile) { respond(res, 403, "Synthetic runner not configured", "text/plain; charset=utf-8"); return; }
@@ -212,6 +224,25 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.writeHead(303, { Location: "/", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
           res.end(); return;
         } finally { busy = false; }
+      }
+      if (requestUrl.pathname === "/migrations" || requestUrl.pathname === "/migrations/new") {
+        if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
+        const entries = await listMigrationIntakes(base);
+        const steps = migrationPlanSteps().map((step, index) => '<li>' + (index + 1) + '. ' + htmlEscape(step) + '</li>').join("");
+        const rows = entries.map(entry => '<tr><td>' + htmlEscape(entry.source) + '</td><td>' +
+          htmlEscape(entry.destination) + '</td><td>Planejada — aguardando integração dos agentes</td></tr>').join("");
+        const form = '<section><h2>Nova migração</h2><p>Registre uma página legada HTTPS e o caminho de destino no AEM. Nenhuma URL será acessada nesta etapa.</p>' +
+          '<form method="post" action="/migrations/new"><input type="hidden" name="csrf" value="' + csrf + '">' +
+          '<label>URL da página legada <input type="url" name="source" required maxlength="500" placeholder="https://exemplo.com/pagina"></label>' +
+          '<label>Destino AEM <input name="destination" required maxlength="250" placeholder="/content/site/pagina"></label>' +
+          '<button type="submit">Criar plano de migração</button></form></section>';
+        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nova migração — Maestro</title>' +
+          businessTheme + '</head><body><header><h1>Central de migrações</h1><p>Da página legada à revisão do plano</p></header><main><nav><a href="/">Visão geral</a><a href="/agents">Agentes</a><a href="/aem/pages">Páginas AEM</a></nav>' +
+          '<aside>Planejamento local. Os agentes e MCP ainda não estão conectados à leitura de URLs legadas ou à criação de páginas reais.</aside>' +
+          form + '<section><h2>Fluxo previsto dos agentes</h2><ol>' + steps + '</ol><p>A aprovação humana é obrigatória. Não há publicação automática.</p></section>' +
+          '<section><h2>Solicitações registradas (' + entries.length + ')</h2><table><thead><tr><th>Origem</th><th>Destino</th><th>Situação</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="3">Nenhuma migração registrada.</td></tr>') + '</tbody></table></section></main></body></html>';
+        respond(res, 200, html); return;
       }
       if (requestUrl.pathname === "/aem/pages" || requestUrl.pathname === "/aem/pages/data") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
