@@ -265,7 +265,12 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
         if (!["execution", "classes", "components", "sequence"].includes(kind)) {
           respond(res, 400, "Unknown diagram", "text/plain; charset=utf-8"); return;
         }
-        respond(res, 200, renderDiagramsPage(kind as DiagramKind, agentStates, agentRun.status)); return;
+        const selectedAgent = requestUrl.searchParams.get("agent") ?? undefined;
+        if (selectedAgent && !["discovery", "evidence", "mapping", "composition", "quality", "review"].includes(selectedAgent)) {
+          respond(res, 400, "Unknown agent", "text/plain; charset=utf-8"); return;
+        }
+        const history = selectedAgent && agentRun.jobId ? await agentHistory.list(agentRun.jobId) : [];
+        respond(res, 200, renderDiagramsPage(kind as DiagramKind, agentStates, agentRun.status, selectedAgent, history, agentRun.jobId)); return;
       }
       if (requestUrl.pathname === "/agents/status") {
         respond(res, 200, JSON.stringify({ ...agentRun, agents: agentStates }), "application/json; charset=utf-8"); return;
