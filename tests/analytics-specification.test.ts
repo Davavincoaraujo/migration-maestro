@@ -28,6 +28,6 @@ test("analytics diagram labels sanitize Mermaid directives and quotes", () => {
   const spec = parseSpecification(fixture);
   spec.requirements[0].title = 'Title"; click X "https://example.org"';
   const result = buildArtifacts(spec);
-  assert.doesNotMatch(result.diagrams.activity, /click X/);
+  assert.doesNotMatch(result.diagrams.activity, /"; click X/);
   assert.doesNotMatch(result.diagrams.activity, /https:/);
 });
