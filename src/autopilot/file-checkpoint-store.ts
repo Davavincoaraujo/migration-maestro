@@ -14,7 +14,7 @@ function validate(value: unknown, id: string): asserts value is Checkpoint {
       item.completed.some(s => typeof s !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(s)) ||
       new Set(item.completed).size !== item.completed.length ||
       !item.outputs || typeof item.outputs !== "object" || Array.isArray(item.outputs) ||
-      Object.keys(item.outputs).some(k => !item.completed.includes(k))) throw new Error("Invalid checkpoint");
+      Object.keys(item.outputs).some(k => !(item.completed as string[]).includes(k))) throw new Error("Invalid checkpoint");
 }
 /** Atomic, single-process JSON checkpoint storage; not a distributed lease store. */
 export class FileCheckpointStore implements CheckpointStore {
