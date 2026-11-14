@@ -1,16 +1,25 @@
 import { runUePatternReadOnly, uePatternConfig, type UePatternConfig } from "./local-ue-pattern.js";
-export type UeValidationState = "executed_unverified" | "blocked" | "unavailable";
-export interface UeValidationGate { status: "review_required"; validation: UeValidationState; cliSucceeded: boolean; humanApprovalRequired: true; }
+import { parseUeValidationReport, type UeReportStatus } from "./ue-report-parser.js";
+export type UeValidationState = UeReportStatus | "blocked" | "unavailable";
+export interface UeValidationGate {
+  status: "review_required"; validation: UeValidationState; cliSucceeded: boolean;
+  humanApprovalRequired: true; errors: number | null; warnings: number | null; infos: number | null;
+}
 type Validator = typeof runUePatternReadOnly;
-/** A successful CLI exit does not imply that its textual findings passed any UE rule. */
+function unavailable(validation: "blocked" | "unavailable"): UeValidationGate {
+  return { status: "review_required", validation, cliSucceeded: false, humanApprovalRequired: true, errors: null, warnings: null, infos: null };
+}
+/** No raw local findings leave this boundary. CLI success is not an architectural approval. */
 export async function evaluateUeValidationGate(
   componentPath: string, config: UePatternConfig | null = uePatternConfig(), validator: Validator = runUePatternReadOnly,
 ): Promise<UeValidationGate> {
-  if (!config) return { status: "review_required", validation: "unavailable", cliSucceeded: false, humanApprovalRequired: true };
+  if (!config) return unavailable("unavailable");
   try {
-    await validator(config, "validar", componentPath);
-    return { status: "review_required", validation: "executed_unverified", cliSucceeded: true, humanApprovalRequired: true };
-  } catch {
-    return { status: "review_required", validation: "blocked", cliSucceeded: false, humanApprovalRequired: true };
-  }
+    const result = await validator(config, "validar", componentPath);
+    const parsed = parseUeValidationReport(result.output);
+    return { status: "review_required", validation: parsed.validation, cliSucceeded: true, humanApprovalRequired: true,
+      errors: parsed.validation === "unverified" ? null : parsed.errors,
+      warnings: parsed.validation === "unverified" ? null : parsed.warnings,
+      infos: parsed.validation === "unverified" ? null : parsed.infos };
+  } catch { return unavailable("blocked"); }
 }
