@@ -254,7 +254,8 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       if (requestUrl.pathname === "/agents/inspect") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
         const id = requestUrl.searchParams.get("id") ?? "";
-        const html = renderAgentInspector(id, agentStates, agentRun);
+        const entries = agentRun.jobId ? await agentHistory.list(agentRun.jobId) : [];
+        const html = renderAgentInspector(id, agentStates, agentRun, entries);
         if (!html) { respond(res, 404, "Unknown agent", "text/plain; charset=utf-8"); return; }
         respond(res, 200, html); return;
       }
