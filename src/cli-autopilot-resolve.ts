@@ -1,5 +1,5 @@
-import { readFile, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile, stat, mkdir, writeFile } from "node:fs/promises";
+import { resolve, join } from "node:path";
 import { fetchAnalystCatalogLocal } from "./integrations/local-analyst-catalog.js";
 import { buildMatchingPlan } from "./integrations/component-matching-engine.js";
 import { assessCompatibility, validateRequirements } from "./integrations/component-compatibility.js";
@@ -10,7 +10,8 @@ import { uePatternConfig } from "./integrations/local-ue-pattern.js";
 import { prioritizeBoundCandidates } from "./integrations/binding-priority.js";
 import { createTaskPacket } from "./integrations/autopilot-task-packet.js";
 const [query, requirementsFile, bindingsFile, ...extra] = process.argv.slice(2);
-if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFile || !bindingsFile || extra.length) {
+const exportPackets = extra.length === 1 && extra[0] === "--write-packets";
+if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFile || !bindingsFile || (extra.length > 0 && !exportPackets)) {
   process.stderr.write("Uso: npm run autopilot:resolve -- banner ./requirements.local.json ./local-input/bindings.json\n");
   process.exitCode = 1;
 } else {
@@ -47,8 +48,18 @@ if (!query || query.length > 120 || /[\x00-\x1f]/.test(query) || !requirementsFi
         taskPacket: createTaskPacket(compatibility, gate, resolved),
       });
     }
+    if (exportPackets) {
+      const dir = resolve("./local-output");
+      await mkdir(dir, { recursive: true, mode: 0o700 });
+      for (const [index, plan] of plans.entries()) {
+        if (plan.binding !== "explicit_local_verified" || plan.taskPacket.task === "investigate") continue;
+        const filename = join(dir, "task-packet-" + (index + 1) + ".json");
+        await writeFile(filename, JSON.stringify(plan.taskPacket, null, 2) + "\\n", { mode: 0o600 });
+      }
+    }
     process.stdout.write(JSON.stringify({
       status: "review_required", assessed: plans.length, bindingSource: "explicit_local_manifest",
+      packetsExported: exportPackets ? plans.filter(p => p.binding === "explicit_local_verified" && p.taskPacket.task !== "investigate").length : 0,
       humanApprovalRequired: true, codeExecutionAuthorized: false, plans,
     }, null, 2) + "\n");
   } catch (error) {
