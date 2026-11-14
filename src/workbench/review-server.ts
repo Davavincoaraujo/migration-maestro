@@ -1,3 +1,5 @@
+import { businessTheme } from "./business-theme.js";
+import { checkLocalAem } from "../integrations/local-aem-status.js";
 import { renderObservabilityCenter, summarizeAgentHistory } from "./observability-center.js";
 import { AgentHistoryStore } from "./agent-history.js";
 import { renderAgentInspector } from "./agent-inspector.js";
@@ -35,7 +37,12 @@ export function renderReviewDashboard(report: WorkbenchReport, ledger: ReviewLed
     return `<tr><td>${htmlEscape(job.id)}</td><td>${htmlEscape(status)}</td><td>${job.componentCount}</td><td>${htmlEscape(job.findings.join(", ") || "Nenhuma")}</td><td>${form || "Somente leitura"}</td><td>${detailLink}</td></tr>`;
   }).join("");
   const history = ledger.entries.map(e => `<li>${htmlEscape(e.jobId)} — ${htmlEscape(e.decision)} por ${htmlEscape(e.reviewer)} em ${htmlEscape(e.decidedAt)}</li>`).join("");
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="10"><title>Migration Maestro — Revisão local</title><style>body{font:16px system-ui,sans-serif;max-width:1150px;margin:3rem auto;padding:0 1rem;color:#152432}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ddd;padding:12px;text-align:left;vertical-align:top}th{background:#eef2f6}form{display:flex;gap:8px;flex-wrap:wrap}button,input{padding:8px}button{cursor:pointer}aside{padding:12px;background:#f4f6f9}small{color:#526273}</style></head><body><h1>Migration Maestro</h1><aside>Revisão humana local de planos sintéticos. Aprovar não publica no AEM e não concede permissão de escrita.</aside>${notice ? `<p role="status">${htmlEscape(notice)}</p>` : ""}${canRun ? `<form method="post" action="/run"><input type="hidden" name="csrf" value="${csrf}"><button type="submit">Executar lote sintético</button></form>` : ""}<h2>Jobs (${report.summary.total})</h2><table><thead><tr><th>Job</th><th>Status</th><th>Componentes</th><th>Pendências</th><th>Decisão</th><th>Inspeção</th></tr></thead><tbody>${rows}</tbody></table><h2>Histórico</h2><ul>${history || "<li>Nenhuma decisão registrada</li>"}</ul><small>Etapas executadas: ${report.metrics.stageExecutions}; checkpoints reutilizados: ${report.metrics.reusedCheckpoints}. Servidor restrito ao loopback, sem integrações corporativas.</small></body></html>`;
+  const kpis = '<div class="kpis">' +
+    '<div class="kpi"><strong>' + report.summary.total + '</strong><span>Páginas no lote</span></div>' +
+    '<div class="kpi"><strong>' + report.summary.reviewRequired + '</strong><span>Aguardando aprovação</span></div>' +
+    '<div class="kpi"><strong>' + report.summary.blocked + '</strong><span>Com impedimentos</span></div>' +
+    '<div class="kpi"><strong>' + report.summary.failed + '</strong><span>Com falhas</span></div></div>';
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="10"><title>Migration Maestro — Visão geral</title>${businessTheme}</head><body><header><h1>Migration Maestro</h1><p>Painel de acompanhamento de migrações</p></header><main><nav aria-label="Navegação principal"><a href="/">Visão geral</a><a href="/agents">Etapas da migração</a><a href="/observability">Indicadores</a><a href="/diagrams">Fluxo visual</a><a href="/aem/status/view">Conexão AEM</a></nav><p class="intro">Acompanhe o progresso, identifique impedimentos e aprove planos com segurança.</p><aside><strong>Ambiente de demonstração.</strong> Os resultados são sintéticos. Aprovar um plano não publica páginas no AEM.</aside>${notice ? `<p role="status">${htmlEscape(notice)}</p>` : ""}${kpis}${canRun ? `<section><h2>Executar demonstração</h2><p>Inicia uma simulação local. Nenhuma página real será alterada.</p><form method="post" action="/run"><input type="hidden" name="csrf" value="${csrf}"><button type="submit">Iniciar simulação</button></form></section>` : ""}<section><h2>Páginas em acompanhamento (${report.summary.total})</h2><p class="muted">Revise as pendências antes de tomar uma decisão.</p><table><thead><tr><th>Página / tarefa</th><th>Situação</th><th>Componentes</th><th>Pendências</th><th>Decisão</th><th>Inspeção</th></tr></thead><tbody>${rows}</tbody></table></section><section><h2>Histórico</h2><ul>${history || "<li>Nenhuma decisão registrada</li>"}</ul></section><small>Etapas executadas: ${report.metrics.stageExecutions}; checkpoints reutilizados: ${report.metrics.reusedCheckpoints}. Servidor local, sem acesso corporativo automático.</small></main></body></html>`;
 }
 /** Read-only inspector uses only sanitized report fields, never raw source content. */
 export function renderJobInspector(report: WorkbenchReport, ledger: ReviewLedger, id: string): string {
@@ -79,7 +86,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history" && requestUrl.pathname !== "/agents/history/view" && requestUrl.pathname !== "/analytics/execution" && requestUrl.pathname !== "/observability" && requestUrl.pathname !== "/observability/data") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history" && requestUrl.pathname !== "/agents/history/view" && requestUrl.pathname !== "/analytics/execution" && requestUrl.pathname !== "/observability" && requestUrl.pathname !== "/observability/data" && requestUrl.pathname !== "/aem/status" && requestUrl.pathname !== "/aem/status/view") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -204,6 +211,20 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.writeHead(303, { Location: "/", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
           res.end(); return;
         } finally { busy = false; }
+      }
+      if (requestUrl.pathname === "/aem/status" || requestUrl.pathname === "/aem/status/view") {
+        if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
+        const status = await checkLocalAem();
+        if (requestUrl.pathname === "/aem/status") {
+          respond(res, 200, JSON.stringify(status), "application/json; charset=utf-8");
+        } else {
+          const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conexão AEM — Migration Maestro</title>' +
+            businessTheme + '</head><body><header><h1>Conexão com o AEM</h1><p>Verificação segura do ambiente local</p></header><main><nav><a href="/">Visão geral</a><a href="/agents">Etapas</a><a href="/observability">Indicadores</a></nav><section><h2>Situação da conexão</h2><p class="pill">' +
+            htmlEscape(status.state) + '</p><p>' + htmlEscape(status.message) +
+            '</p><p>Esta verificação não autentica, não lê páginas e não publica conteúdo.</p></section></main></body></html>';
+          respond(res, 200, html);
+        }
+        return;
       }
       if (requestUrl.pathname === "/observability" || requestUrl.pathname === "/observability/data") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
