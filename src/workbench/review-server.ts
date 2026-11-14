@@ -111,7 +111,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
               const store = new FileCheckpointStore(join(base, "agent-checkpoints"));
               await executeLocalAgentGraph(jobId, fixture.input, createSyntheticAgentHandlers(), store, undefined, event => {
                 if (event.stage === "checkpoint-reused") {
-                  agentStates = ["discovery", "evidence", "mapping", "composition", "quality"].map(id => ({ id, status: "reused" }));
+                  agentStates = ["discovery", "evidence", "mapping", "composition", "quality"].map(id => ({ id, status: "reused" as const }));
                 } else {
                   agentStates = [...agentStates.filter(item => item.id !== event.agentId), { id: event.agentId, status: "completed" }];
                 }
