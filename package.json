@@ -19,7 +19,8 @@
     "analyst:tools": "tsx src/cli-analyst-mcp.ts",
     "analyst:context": "tsx src/cli-analyst-context.ts",
     "analyst:catalog": "tsx src/cli-analyst-catalog.ts",
-    "analyst:shape": "tsx src/cli-analyst-shape.ts"
+    "analyst:shape": "tsx src/cli-analyst-shape.ts",
+    "analyst:matches": "tsx src/cli-analyst-matches.ts"
   },
   "engines": {
     "node": ">=20"
