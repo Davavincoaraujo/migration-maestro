@@ -1,0 +1,98 @@
+[
+  {
+    "id": "demo",
+    "input": {
+      "pageId": "demo",
+      "sections": [
+        {
+          "id": "section_1",
+          "collections": 0,
+          "maximumDepth": 0
+        }
+      ],
+      "catalog": {
+        "schemaVersion": 1,
+        "components": [
+          {
+            "componentId": "model-aaaaaaaaaaaaaaaa",
+            "containers": []
+          }
+        ],
+        "summary": {
+          "components": 1,
+          "collections": 0,
+          "maximumDepth": 0
+        }
+      },
+      "evidence": {
+        "schemaVersion": 1,
+        "pageId": "demo",
+        "capturedAt": "2026-01-01T00:00:00.000Z",
+        "viewport": {
+          "width": 1280,
+          "height": 720
+        },
+        "structure": {
+          "sections": 1,
+          "headings": 1,
+          "links": 0,
+          "images": 0
+        },
+        "checks": {
+          "titlePresent": true,
+          "descriptionPresent": true,
+          "hasH1": true,
+          "brokenLinks": 0
+        }
+      }
+    }
+  },
+  {
+    "id": "blocked",
+    "input": {
+      "pageId": "blocked",
+      "sections": [
+        {
+          "id": "section_2",
+          "collections": 0,
+          "maximumDepth": 0
+        }
+      ],
+      "catalog": {
+        "schemaVersion": 1,
+        "components": [
+          {
+            "componentId": "model-aaaaaaaaaaaaaaaa",
+            "containers": []
+          }
+        ],
+        "summary": {
+          "components": 1,
+          "collections": 0,
+          "maximumDepth": 0
+        }
+      },
+      "evidence": {
+        "schemaVersion": 1,
+        "pageId": "blocked",
+        "capturedAt": "2026-01-01T00:00:00.000Z",
+        "viewport": {
+          "width": 1280,
+          "height": 720
+        },
+        "structure": {
+          "sections": 1,
+          "headings": 1,
+          "links": 2,
+          "images": 0
+        },
+        "checks": {
+          "titlePresent": true,
+          "descriptionPresent": true,
+          "hasH1": true,
+          "brokenLinks": 1
+        }
+      }
+    }
+  }
+]
