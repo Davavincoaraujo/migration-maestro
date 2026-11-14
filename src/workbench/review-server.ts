@@ -234,7 +234,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       if (requestUrl.pathname === "/diagrams") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
         const kind = requestUrl.searchParams.get("kind") ?? "execution";
-        if (!["execution", "components", "sequence"].includes(kind)) {
+        if (!["execution", "classes", "components", "sequence"].includes(kind)) {
           respond(res, 400, "Unknown diagram", "text/plain; charset=utf-8"); return;
         }
         respond(res, 200, renderDiagramsPage(kind as DiagramKind, agentStates, agentRun.status)); return;
