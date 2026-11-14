@@ -78,7 +78,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history" && requestUrl.pathname !== "/agents/history/view") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events" && requestUrl.pathname !== "/agents" && requestUrl.pathname !== "/agents/run" && requestUrl.pathname !== "/agents/status" && requestUrl.pathname !== "/diagrams" && requestUrl.pathname !== "/agents/inspect" && requestUrl.pathname !== "/agents/history" && requestUrl.pathname !== "/agents/history/view" && requestUrl.pathname !== "/analytics/execution") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -204,6 +204,33 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.end(); return;
         } finally { busy = false; }
       }
+      if (requestUrl.pathname === "/analytics/execution") {
+        if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
+        let report: unknown;
+        try { report = JSON.parse(await readFile(join(base, "analytics-execution.json"), "utf8")) as unknown; }
+        catch { respond(res, 404, "No analytics execution report", "text/plain; charset=utf-8"); return; }
+        if (!report || typeof report !== "object" || !("items" in report) || !Array.isArray(report.items) ||
+            report.items.length > 100 || !("projectId" in report) || typeof report.projectId !== "string" ||
+            !validId(report.projectId)) {
+          respond(res, 400, "Invalid analytics report", "text/plain; charset=utf-8"); return;
+        }
+        const safeItems = report.items as unknown[];
+        const rows = safeItems.map(raw => {
+          if (!raw || typeof raw !== "object") return "";
+          const item = raw as Record<string, unknown>;
+          const req = typeof item.requirementId === "string" && validId(item.requirementId) ? item.requirementId : "-";
+          const state = item.status === "awaiting-human-review" ? "awaiting-human-review" : "unknown";
+          const reused = item.checkpointReused === true ? "yes" : "no";
+          const agents = Array.isArray(item.completedAgents) ? item.completedAgents.filter((id): id is string =>
+            typeof id === "string" && ["discovery", "evidence", "mapping", "composition", "quality"].includes(id)).join(", ") : "";
+          return "<tr><td>" + htmlEscape(req) + "</td><td>" + htmlEscape(state) +
+            "</td><td>" + htmlEscape(agents) + "</td><td>" + reused + "</td></tr>";
+        }).join("");
+        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Analytics — Execução local</title><style>body{font:16px system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%}th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}</style></head><body><p><a href="/agents">Voltar aos agentes</a></p><h1>Analytics — ' +
+          htmlEscape(report.projectId) + '</h1><p>Execução sintética local. Nenhum requisito foi aprovado ou publicado.</p><table><thead><tr><th>Requisito</th><th>Status</th><th>Agentes concluídos</th><th>Checkpoint reutilizado</th></tr></thead><tbody>' +
+          rows + '</tbody></table></body></html>';
+        respond(res, 200, html); return;
+      }
       if (requestUrl.pathname === "/agents/history/view") {
         if (req.method !== "GET") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
         const id = requestUrl.searchParams.get("id") ?? "";
@@ -245,7 +272,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       if (requestUrl.pathname === "/agents") {
         const graph = renderAgentGraph(agentStates);
         const form = syntheticInputFile ? '<form method="post" action="/agents/run"><input type="hidden" name="csrf" value="' + csrf + '"><label>ID do job sintético <input name="jobId" required maxlength="80" pattern="[A-Za-z0-9_-]{1,80}" value="demo"></label><button type="submit">Executar agentes locais</button></form>' : "<p>Inicie o dashboard com um arquivo de jobs sintéticos para executar.</p>";
-        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Migration Maestro — Agentes</title></head><body><p><a href="/">Voltar ao dashboard</a></p><h1>Centro de orquestração</h1><p><a href="/diagrams">Ver diagramas UML e execução</a></p><p>Execução: ' + htmlEscape(agentRun.status) + (agentRun.jobId ? " — " + htmlEscape(agentRun.jobId) : "") + '</p>' + form + graph + '<p>Resultado: simulação, sem chamadas a modelos ou escrita no AEM. Revisão humana permanece separada.</p></body></html>';
+        const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Migration Maestro — Agentes</title></head><body><p><a href="/">Voltar ao dashboard</a></p><h1>Centro de orquestração</h1><p><a href="/diagrams">Ver diagramas UML e execução</a> · <a href="/analytics/execution">Analytics: requisitos e agentes</a></p><p>Execução: ' + htmlEscape(agentRun.status) + (agentRun.jobId ? " — " + htmlEscape(agentRun.jobId) : "") + '</p>' + form + graph + '<p>Resultado: simulação, sem chamadas a modelos ou escrita no AEM. Revisão humana permanece separada.</p></body></html>';
         respond(res, 200, html); return;
       }
       if (requestUrl.pathname === "/events") {
