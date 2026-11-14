@@ -9,11 +9,11 @@ function within(root: string, target: string): boolean {
  const rel = relative(root, target);
  return rel !== "" && rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel);
 }
-async function git(cwd: string, args: string[]): Promise<string> {
+async function git(cwd: string, args: string[], options: { timeoutMs?: number; stage?: string } = {}): Promise<string> {
  return new Promise((ok, fail) => {
-  const child = spawn("git", args, { cwd, shell: false, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn("git", args, { cwd, shell: false, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
   let output = "", bytes = 0, settled = false;
-  const timer = setTimeout(() => finish(new Error("GIT_TIMEOUT")), 15000);
+  const timer = setTimeout(() => finish(new Error("GIT_TIMEOUT_" + (options.stage ?? "QUERY"))), options.timeoutMs ?? 15000);
   function finish(error?: Error) { if (settled) return; settled = true; clearTimeout(timer); if (error) { child.kill(); fail(error); } else ok(output.trim()); }
   child.stdout.on("data", (chunk: Buffer) => { bytes += chunk.length; if (bytes > 16000) finish(new Error("GIT_OUTPUT_LIMIT")); else output += chunk.toString(); });
   child.stderr.on("data", (chunk: Buffer) => { bytes += chunk.length; if (bytes > 16000) finish(new Error("GIT_OUTPUT_LIMIT")); });
@@ -42,6 +42,6 @@ export async function createIsolatedWorktree(config: UePatternConfig, componentP
  try { await lstat(destination); throw new Error("WORKTREE_EXISTS"); } catch (e) {
   if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
  }
- await git(project, ["worktree", "add", "--detach", "--", destination, head]);
+ await git(project, ["worktree", "add", "--detach", "--", destination, head], { timeoutMs: 180000, stage: "WORKTREE_ADD" });
  return { status: "isolated", task: packet.task, baseCommit: head, worktreePath: destination, sourceWorktreeUntouched: true, agentExecuted: false, changesAuthorized: false, publicationAuthorized: false };
 }
