@@ -35,7 +35,8 @@
     "autopilot:agent-preflight": "tsx src/cli-autopilot-agent-preflight.ts",
     "autopilot:execute": "tsx src/cli-autopilot-execute.ts",
     "autopilot:discover": "tsx src/cli-autopilot-discover.ts",
-    "maestro": "tsx src/cli-maestro-url.ts"
+    "maestro": "tsx src/cli-maestro-url.ts",
+    "maestro:web": "tsx src/cli-maestro-web.ts"
   },
   "engines": {
     "node": ">=20"
