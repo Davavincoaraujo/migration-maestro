@@ -3,6 +3,26 @@ import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 
+/** Whitelist-only classification: never reveal Analyst payloads, paths, credentials or page content. */
+export function classifyAnalystToolError(content: unknown): string {
+ const blocks = Array.isArray(content) ? content : [];
+ const text = blocks.slice(0, 8).map((block: unknown) => {
+  if (!block || typeof block !== "object") return "";
+  const item = block as { type?: unknown; text?: unknown };
+  return item.type === "text" && typeof item.text === "string" ? item.text.slice(0, 3000) : "";
+ }).join(" ").toLowerCase();
+ if (/playwright|chromium|browser executable|browser.*install/.test(text)) return "ANALYST_BROWSER_UNAVAILABLE";
+ if (/timeout|timed out|tempo esgotado/.test(text)) return "ANALYST_TARGET_TIMEOUT";
+ if (/403|401|forbidden|unauthorized|access denied|acesso negado/.test(text)) return "ANALYST_TARGET_ACCESS_DENIED";
+ if (/404|not found|não encontrad/.test(text)) return "ANALYST_TARGET_NOT_FOUND";
+ if (/certificate|cert_|tls|ssl/.test(text)) return "ANALYST_TARGET_TLS_ERROR";
+ if (/enotfound|dns|eai_again/.test(text)) return "ANALYST_TARGET_DNS_ERROR";
+ if (/econnrefused|econnreset|net::err_|network error/.test(text)) return "ANALYST_TARGET_NETWORK_ERROR";
+ if (/invalid.*(url|argument|parameter)|validation|zoderror|invalid_type|expected.*received|missing.*required/.test(text)) return "ANALYST_TOOL_INPUT_REJECTED";
+ if (/missing.*(env|config|token|key)|not configured|configuration/.test(text)) return "ANALYST_CONFIGURATION_MISSING";
+ return "ANALYST_TOOL_RETURNED_ERROR";
+}
+
 export interface UrlAnalysis { stage: "analyzed" | "needs_configuration"; tool: string | null; content: unknown[]; reason?: string; }
 export function validatePageUrl(input: string): string {
  let url: URL;
@@ -64,7 +84,7 @@ export async function analyzeUrlViaMcp(directory: string | undefined, url: strin
      send(3, "tools/call", { name: selection.name, arguments: { [selection.key]: validatedUrl } });
     } else if (msg.id === 3) {
      if (msg.error) return done(new Error("ANALYST_RPC_CALL_ERROR"));
-     if (msg.result?.isError) return done(new Error("ANALYST_TOOL_RETURNED_ERROR"));
+     if (msg.result?.isError) return done(new Error(classifyAnalystToolError(msg.result?.content)));
      if (!Array.isArray(msg.result?.content)) return done(new Error("ANALYST_INVALID_RESULT"));
      done(undefined, { stage: "analyzed", tool: selection!.name, content: msg.result.content });
     }
