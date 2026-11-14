@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { createReadDispatcher } from "../mcp/dispatcher.js";
 import { runEvidenceBatch, type EvidenceBatchJob } from "../pipeline/evidence-batch.js";
 import { FileCheckpointStore } from "../autopilot/file-checkpoint-store.js";
@@ -12,17 +14,18 @@ export interface WorkbenchJob {
   componentCount: number;
   requiresHumanReview: true;
   aemWritePerformed: false;
+  reviewDecision: "pending" | "approved" | "rejected";
 }
 export interface WorkbenchReport {
   schemaVersion: 1;
   generatedAt: string;
   jobs: WorkbenchJob[];
   summary: { total: number; blocked: number; reviewRequired: number; failed: number; cancelled: number };
-  metrics: { stageExecutions: number; reusedCheckpoints: number; estimatedModelCostBRL: 0 };
+  metrics: { completedStages: number; stageExecutions: number; reusedCheckpoints: number; elapsedMs: number; estimatedModelCostBRL: 0 };
   noAemWrites: true;
 }
 function summarize(id: string, outcome: QueueOutcome<Checkpoint>): WorkbenchJob {
-  const common = { id, requiresHumanReview: true as const, aemWritePerformed: false as const };
+  const common = { id, requiresHumanReview: true as const, aemWritePerformed: false as const, reviewDecision: "pending" as const };
   if (outcome.status !== "fulfilled") return {
     ...common, status: outcome.status === "cancelled" ? "cancelled" as const : "failed" as const,
     stages: [], findings: [], componentCount: 0,
@@ -44,12 +47,17 @@ export async function runLocalWorkbench(
   jobs: readonly EvidenceBatchJob[], checkpointDirectory: string, options: QueueOptions,
 ): Promise<WorkbenchReport> {
   const store = new FileCheckpointStore(checkpointDirectory);
-  const prior = await Promise.all(jobs.map(async j => {
-    // The runner derives its own IDs; count reused outputs after processing instead of guessing IDs.
-    return j.id;
+  const before = await Promise.all(jobs.map(async j => {
+    const id = createHash("sha256").update("evidence-v1:" + j.id).digest("hex").slice(0, 20);
+    return store.get(id);
   }));
+  const started = performance.now();
   const outcomes = await runEvidenceBatch(jobs, store, options);
-  const records = outcomes.map((outcome, i) => summarize(prior[i], outcome));
+  const elapsedMs = Math.round((performance.now() - started) * 100) / 100;
+  const records = outcomes.map((outcome, i) => summarize(jobs[i].id, outcome));
+  const reusedCheckpoints = before.filter(c => c?.state === "awaiting-review").length;
+  const completedStages = records.reduce((sum, j) => sum + j.stages.length, 0);
+  const stageExecutions = outcomes.reduce((sum, result, i) => sum + (result.status === "fulfilled" ? Math.max(0, result.value.completed.length - (before[i]?.completed.length ?? 0)) : 0), 0);
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
@@ -62,8 +70,10 @@ export async function runLocalWorkbench(
       cancelled: records.filter(j => j.status === "cancelled").length,
     },
     metrics: {
-      stageExecutions: records.reduce((sum, j) => sum + j.stages.length, 0),
-      reusedCheckpoints: 0,
+      completedStages,
+      stageExecutions,
+      reusedCheckpoints,
+      elapsedMs,
       estimatedModelCostBRL: 0,
     },
     noAemWrites: true,
