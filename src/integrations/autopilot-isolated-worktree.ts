@@ -29,7 +29,7 @@ export async function createIsolatedWorktree(config: UePatternConfig, componentP
  const project = await realpath(config.projectDirectory);
  const root = await realpath(resolve(outputRoot));
  if (!(await stat(root)).isDirectory()) throw new Error("INVALID_OUTPUT_DIRECTORY");
- if (within(project, root) || within(root, project)) throw new Error("UNSAFE_WORKTREE_LOCATION");
+ if (project === root || within(project, root) || within(root, project)) throw new Error("UNSAFE_WORKTREE_LOCATION");
  const top = await git(project, ["rev-parse", "--show-toplevel"]);
  if (await realpath(top) !== project) throw new Error("PROJECT_NOT_GIT_ROOT");
  const head = await git(project, ["rev-parse", "--verify", "HEAD"]);
