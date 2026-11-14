@@ -9,8 +9,19 @@ export const SAFE_ANALYST_TOOLS = [
   "collect_page_evidence", "inspect_page_interactions", "capture_page_region",
   "inspect_legacy_source", "run_lighthouse",
 ] as const;
-export interface AnalystToolSummary { name: string; allowed: boolean; }
-export async function discoverAnalystTools(directory: string | undefined): Promise<AnalystToolSummary[]> {
+export interface AnalystToolSummary { name: string; allowed: boolean; parameters?: { name: string; required: boolean; type: string }[]; }
+/** Only expose field names and primitive types, never defaults, descriptions, examples or content. */
+export function summarizeInputSchema(schema: unknown): { name: string; required: boolean; type: string }[] {
+  if (!schema || typeof schema !== "object") return [];
+  const data = schema as { properties?: Record<string, unknown>; required?: unknown };
+  if (!data.properties || typeof data.properties !== "object" || Array.isArray(data.properties)) return [];
+  const required = Array.isArray(data.required) ? data.required : [];
+  return Object.entries(data.properties).slice(0, 50).map(([name, definition]) => {
+    const field = definition && typeof definition === "object" ? definition as { type?: unknown } : {};
+    return { name, required: required.includes(name), type: typeof field.type === "string" ? field.type : "complex" };
+  });
+}
+export async function discoverAnalystTools(directory: string | undefined, includeSchemas = false): Promise<AnalystToolSummary[]> {
   if (!directory || !isAbsolute(directory)) throw new Error("ANALYST_DIRECTORY_NOT_CONFIGURED");
   const root = await realpath(directory).catch(() => { throw new Error("ANALYST_DIRECTORY_NOT_FOUND"); });
   if (!(await stat(root)).isDirectory()) throw new Error("ANALYST_DIRECTORY_INVALID");
@@ -42,7 +53,7 @@ export async function discoverAnalystTools(directory: string | undefined): Promi
     reader.on("line", line => {
       if (line.length > 256000) { done(new Error("ANALYST_RESPONSE_TOO_LARGE")); return; }
       try {
-        const msg = JSON.parse(line) as { id?: number; error?: unknown; result?: { tools?: { name?: string }[] } };
+        const msg = JSON.parse(line) as { id?: number; error?: unknown; result?: { tools?: { name?: string; inputSchema?: unknown }[] } };
         if (msg.id === 1) {
           if (msg.error) { done(new Error("ANALYST_HANDSHAKE_FAILED")); return; }
           child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
@@ -51,6 +62,7 @@ export async function discoverAnalystTools(directory: string | undefined): Promi
           if (msg.error || !Array.isArray(msg.result?.tools)) { done(new Error("ANALYST_TOOL_DISCOVERY_FAILED")); return; }
           const tools = msg.result.tools.filter(t => typeof t.name === "string").map(t => ({
             name: t.name as string, allowed: (SAFE_ANALYST_TOOLS as readonly string[]).includes(t.name as string),
+            ...(includeSchemas && (SAFE_ANALYST_TOOLS as readonly string[]).includes(t.name as string) ? { parameters: summarizeInputSchema(t.inputSchema) } : {}),
           }));
           done(undefined, tools);
         }
