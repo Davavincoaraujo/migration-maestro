@@ -15,7 +15,8 @@
     "analytics": "tsx src/cli-analytics.ts",
     "analytics:execute": "tsx src/cli-analytics-execute.ts",
     "ue:local": "tsx src/cli-ue-local.ts",
-    "local:preflight": "tsx src/cli-local-preflight.ts"
+    "local:preflight": "tsx src/cli-local-preflight.ts",
+    "analyst:tools": "tsx src/cli-analyst-mcp.ts"
   },
   "engines": {
     "node": ">=20"
