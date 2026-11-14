@@ -1,3 +1,4 @@
+import { MaestroEventJournal } from "../integrations/event-journal.js";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile, writeFile, rename } from "node:fs/promises";
@@ -60,6 +61,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
   let running = false;
   type JobProgress = { id: string; status: "queued" | "running" | "review-required" | "blocked" | "failed" | "cancelled"; stage: string; completed: number; total: number };
   let jobProgress: JobProgress[] = [];
+  const journal = new MaestroEventJournal();
   let runState: { status: "idle" | "running" | "completed" | "failed"; startedAt?: string; finishedAt?: string } = { status: "idle" };
   const server = createServer(async (req, res) => {
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -67,7 +69,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
       respond(res, 403, "Forbidden", "text/plain; charset=utf-8"); return;
     }
     const requestUrl = new URL(req.url ?? "/", origin);
-    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
+    if (requestUrl.pathname !== "/" && requestUrl.pathname !== "/review" && requestUrl.pathname !== "/job" && requestUrl.pathname !== "/run" && requestUrl.pathname !== "/run-status" && requestUrl.pathname !== "/events") { respond(res, 404, "Not found", "text/plain; charset=utf-8"); return; }
     if (req.method !== "GET" && req.method !== "POST") { respond(res, 405, "Method not allowed", "text/plain; charset=utf-8"); return; }
     try {
       if (req.method === "POST") {
@@ -94,6 +96,7 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           // Reserve the runner synchronously; subsequent requests can inspect status.
           running = true;
           runState = { status: "running", startedAt: new Date().toISOString() };
+          journal.append({ type: "run.started" });
           void (async () => {
             try {
               const raw: unknown = JSON.parse(await readFile(resolve(syntheticInputFile), "utf8"));
@@ -102,18 +105,22 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
               const report = await runLocalWorkbench(raw as EvidenceBatchJob[], join(base, "checkpoints"), { concurrency: 2, maxJobs: 100 }, (id, stage, completed, total) => {
                 const job = jobProgress.find(item => item.id === id);
                 if (job) { job.status = "running"; job.stage = stage; job.completed = completed; job.total = total; }
+                journal.append({ type: stage === "checkpoint-reused" ? "job.checkpoint.reused" : "job.stage.completed", jobId: id, stage, completed, total });
               });
               for (const result of report.jobs) {
                 const job = jobProgress.find(item => item.id === result.id);
                 if (job) { job.status = result.status; job.completed = result.stages.length; job.stage = result.stages.at(-1) ?? "none"; }
+                journal.append({ type: "job.finished", jobId: result.id, status: result.status });
               }
               const output = join(base, "report.json");
               const temporary = join(base, "report.pending.json");
               await writeFile(temporary, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
               await rename(temporary, output);
               runState = { ...runState, status: "completed", finishedAt: new Date().toISOString() };
+              journal.append({ type: "run.completed" });
             } catch {
               runState = { ...runState, status: "failed", finishedAt: new Date().toISOString() };
+              journal.append({ type: "run.failed" });
             } finally {
               running = false;
             }
@@ -142,6 +149,11 @@ export async function startReviewServer(directory: string, port = 4177, syntheti
           res.writeHead(303, { Location: "/", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
           res.end(); return;
         } finally { busy = false; }
+      }
+      if (requestUrl.pathname === "/events") {
+        const cursor = requestUrl.searchParams.get("after") ?? "0";
+        if (!/^(0|[1-9][0-9]{0,12})$/.test(cursor)) { respond(res, 400, "Invalid cursor", "text/plain; charset=utf-8"); return; }
+        respond(res, 200, JSON.stringify({ events: journal.list(Number(cursor)) }), "application/json; charset=utf-8"); return;
       }
       if (requestUrl.pathname === "/run-status") {
         respond(res, 200, JSON.stringify({ ...runState, jobs: jobProgress }), "application/json; charset=utf-8"); return;
