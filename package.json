@@ -8,7 +8,8 @@
     "metadata:export": "tsx src/cli-export-metadata.ts",
     "test": "tsx --test tests/*.test.ts",
     "check": "tsc --noEmit",
-    "metadata:catalog": "tsx src/cli-catalog.ts"
+    "metadata:catalog": "tsx src/cli-catalog.ts",
+    "workbench": "tsx src/cli-workbench.ts"
   },
   "engines": {
     "node": ">=20"
