@@ -11,3 +11,10 @@ test("agent prompt is scoped and never authorizes publication", () => {
 test("agent execution requires explicit opt-in before any filesystem or CLI access", async () => {
  await assert.rejects(runClaudeInWorktree("/nonexistent", "/nonexistent", "principal/sections/banner/v1", { execute: false }), /EXECUTION_OPT_IN_REQUIRED/);
 });
+
+test("local requirements are supplied and download-capable runners prohibited", () => {
+ const prompt = buildAgentPrompt("adapt_component", "principal/sections/banner/v1", { capabilities: ["slide"], variants: [], fieldTypes: [] });
+ assert.match(prompt, /"slide"/);
+ assert.match(prompt, /Never use npx/);
+ assert.throws(() => buildAgentPrompt("adapt_component", "principal/sections/banner/v1", { capabilities: [], variants: [], fieldTypes: [] }), /EMPTY_REQUIREMENTS/);
+});
