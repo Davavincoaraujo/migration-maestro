@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { analyzeUrlViaMcp, validatePageUrl } from "./integrations/url-analysis-orchestrator.js";
 const host = "127.0.0.1";
 const port = 4178;
-type Run = { id: string; status: string; stage: string; error?: string; resultBlocks?: number; tool?: string | null; events: { at: string; message: string }[]; startedAt: string; finishedAt?: string; plan?: MigrationPlan; evidence?: unknown[]; reviewDecision?: "approved" | "changes_requested"; discovery?: {status:string;queries:string[];results:{query:string;candidateCount:number;rejectedRecords:number}[]}; };
+type Run = { id: string; status: string; stage: string; error?: string; resultBlocks?: number; tool?: string | null; events: { at: string; message: string }[]; startedAt: string; finishedAt?: string; plan?: MigrationPlan; evidence?: unknown[]; reviewDecision?: "approved" | "changes_requested"; discovery?: Awaited<ReturnType<typeof runCatalogDiscovery>>; };
 const runs = new Map<string, Run>();
 function addEvent(run: Run, message: string) { run.events.push({ at: new Date().toISOString(), message }); }
 const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Migration Maestro</title><style>
@@ -44,10 +44,10 @@ const server = createServer(async (req,res) => {
    void runCatalogDiscovery(process.env.MAESTRO_ANALYTICS_DIR,run.evidence,message=>addEvent(run,message)).then(async discovery=>{
     run.discovery=discovery;
     run.plan!.tasks.find(t=>t.id==="catalog")!.status=discovery.status==="review_required"?"completed":"review_required";
-    run.plan!.tasks.find(t=>t.id==="ue_gate")!.status=discovery.status==="review_required"?"review_required":"pending";
+    run.plan!.tasks.find(t=>t.id==="ue_gate")!.status=discovery.results.some(r=>r.ueValidation==="passed"||r.ueValidation==="passed_with_warnings")?"review_required":"pending";
     run.status="review_required";
     if(discovery.status==="review_required")run.plan!.tasks.find(t=>t.id==="interpret")!.status="completed";
-    addEvent(run,discovery.status==="review_required"?"Catálogo consultado; validação UE pendente":"Nenhum componente estruturado reconhecido; revisão necessária");
+    addEvent(run,discovery.status==="review_required"?"Catálogo e inspeção consultados; verifique resultados UE por candidato":"Nenhum componente estruturado reconhecido; revisão necessária");
     await writeFile(join(dir,"discovery.json"),JSON.stringify(discovery,null,2),{mode:0o600});
    }).catch(e=>{run.status="review_required";run.plan!.tasks.find(t=>t.id==="catalog")!.status="review_required";run.error=/^[A-Z_]+$/.test(e?.message??"")?e.message:"CATALOG_DISCOVERY_FAILED";addEvent(run,"Falha na consulta ao catálogo; revisão necessária");});
   }

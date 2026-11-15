@@ -1,3 +1,4 @@
+import { evaluateUeValidationGate } from "./ue-validation-gate.js";
 import { buildMatchingPlan } from "./component-matching-engine.js";
 import { fetchAnalystCatalogLocal } from "./local-analyst-catalog.js";
 /** Conservative keyword extraction: never assume arbitrary page text is a component specification. */
@@ -31,15 +32,43 @@ export function extractComponentQueries(blocks: unknown[]): string[] {
  return [...found];
 }
 
+export type DiscoveryResult = {
+ status:"review_required"|"needs_component_review";
+ queries:string[];
+ results:{query:string;candidateCount:number;rejectedRecords:number;inspected:number;inspectionFailed:number;ueValidation:"passed"|"passed_with_warnings"|"failed"|"unverified"|"blocked"|"unavailable"|"not_run";ueErrors:number|null;ueWarnings:number|null}[];
+};
 export async function runCatalogDiscovery(directory: string|undefined, blocks: unknown[], onEvent:(message:string)=>void){
  const queries=extractComponentQueries(blocks);
  if(!queries.length)return {status:"needs_component_review" as const,queries:[],results:[]};
- const results: {query:string;candidateCount:number;rejectedRecords:number}[]=[];
+ const results: DiscoveryResult["results"]=[];
  for(const query of queries){
   onEvent("Consultando catálogo para componente: "+query);
   const response=await fetchAnalystCatalogLocal(directory,{tool:"search_component_catalog",query,limit:5});
   const matches=buildMatchingPlan(response.content);
-  results.push({query,candidateCount:matches.candidates.length,rejectedRecords:matches.rejectedRecords});
+  let inspected=0,inspectionFailed=0;
+  let ueValidation: DiscoveryResult["results"][number]["ueValidation"]="not_run";
+  let ueErrors:number|null=null,ueWarnings:number|null=null;
+  // Inspect only the top candidate. A search score alone is not proof of compatibility.
+  const candidate=matches.candidates[0];
+  if(candidate){
+   onEvent("Inspecionando candidato do catálogo para: "+query);
+   try{
+    const inspectedResult=await fetchAnalystCatalogLocal(directory,{tool:"inspect_component",idOrName:candidate.id});
+    if(inspectedResult.content.length>0)inspected=1;
+    else inspectionFailed=1;
+   }catch{inspectionFailed=1;onEvent("Inspeção indisponível para: "+query);}
+   // UE CLI accepts a local relative component path, never an arbitrary catalog identifier.
+   if(inspected && /^[a-zA-Z0-9_-]+(?:\\/[a-zA-Z0-9_-]+)*$/.test(candidate.id)&&candidate.id.length<=180){
+    onEvent("Validando padrão UE para candidato de: "+query);
+    try{
+     const gate=await evaluateUeValidationGate(candidate.id);
+     ueValidation=gate.validation;
+     ueErrors=gate.errors;
+     ueWarnings=gate.warnings;
+    }catch{ueValidation="blocked";}
+   }
+  }
+  results.push({query,candidateCount:matches.candidates.length,rejectedRecords:matches.rejectedRecords,inspected,inspectionFailed,ueValidation,ueErrors,ueWarnings});
  }
  return {status:"review_required" as const,queries,results};
 }
