@@ -9,6 +9,8 @@ export type PromptResult = {
   promptSent: boolean;
   promptCompleted: boolean;
   stopReason?: string;
+  responseText?: string;
+  responseTruncated: boolean;
   updatesReceived: number;
   serverRequestsDenied: number;
   toolsEnabled: false;
@@ -16,7 +18,7 @@ export type PromptResult = {
   reason: "COMPLETED" | "INITIALIZE_FAILED" | "SESSION_FAILED" | "PROMPT_FAILED" | "TIMEOUT" | "PROCESS_EXITED" | "PROCESS_UNAVAILABLE" | "PROTOCOL_ERROR";
 };
 
-/** Read-only ACP prompt smoke test. Never approves permissions or exposes the response text. */
+/** ACP prompt runner with bounded text capture; never approves permissions. Treat output as untrusted. */
 export async function executeHermesPrompt(
   prompt = "Responda apenas: Hermes conectado ao Migration Maestro.",
   executable = "hermes",
@@ -44,6 +46,8 @@ export async function executeHermesPrompt(
       let sessionCreated = false;
       let promptSent = false;
       let updatesReceived = 0;
+      let responseText = "";
+      let responseTruncated = false;
       let serverRequestsDenied = 0;
       let buffer = "";
       const timer = setTimeout(() => finish("TIMEOUT"), timeoutMs);
@@ -63,6 +67,7 @@ export async function executeHermesPrompt(
           promptCompleted: reason === "COMPLETED",
           ...(stopReason ? { stopReason } : {}),
           updatesReceived, serverRequestsDenied,
+          ...(responseText ? { responseText } : {}), responseTruncated,
           toolsEnabled: false, autopilotEnabled: false, reason
         });
       }
@@ -114,6 +119,19 @@ export async function executeHermesPrompt(
             }
           } else if (msg.method === "session/update") {
             updatesReceived++;
+            const params = msg.params;
+            if (!params || typeof params !== "object" || Array.isArray(params)) continue;
+            const update = (params as Record<string, unknown>).update;
+            if (!update || typeof update !== "object" || Array.isArray(update)) continue;
+            const event = update as Record<string, unknown>;
+            if (event.sessionUpdate !== "agent_message_chunk") continue;
+            const content = event.content;
+            if (!content || typeof content !== "object" || Array.isArray(content)) continue;
+            const block = content as Record<string, unknown>;
+            if (block.type !== "text" || typeof block.text !== "string") continue;
+            const remaining = 32768 - responseText.length;
+            if (block.text.length > remaining) responseTruncated = true;
+            if (remaining > 0) responseText += block.text.slice(0, remaining);
           }
         }
       });
