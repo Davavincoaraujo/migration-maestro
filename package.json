@@ -55,7 +55,8 @@
     "hermes:workspace": "tsx src/cli-hermes-workspace.ts",
     "hermes:git-plan": "tsx src/cli-hermes-git-plan.ts",
     "hermes:branch-preflight": "tsx src/cli-hermes-branch-preflight.ts",
-    "hermes:local-worktree": "tsx src/cli-hermes-local-worktree.ts"
+    "hermes:local-worktree": "tsx src/cli-hermes-local-worktree.ts",
+    "hermes:catalog-scan": "tsx src/cli-hermes-catalog-scan.ts"
   },
   "engines": {
     "node": ">=20"
