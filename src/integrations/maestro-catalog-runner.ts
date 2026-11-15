@@ -35,7 +35,7 @@ export function extractComponentQueries(blocks: unknown[]): string[] {
 export type DiscoveryResult = {
  status:"review_required"|"needs_component_review";
  queries:string[];
- results:{query:string;candidateCount:number;rejectedRecords:number;inspected:number;inspectionFailed:number;ueValidation:"clean"|"warnings"|"errors"|"unverified"|"blocked"|"unavailable"|"not_run";ueErrors:number|null;ueWarnings:number|null}[];
+ results:{query:string;candidateCount:number;rejectedRecords:number;inspected:number;inspectionFailed:number;ueValidation:"passed"|"passed_with_warnings"|"failed"|"unverified"|"blocked"|"unavailable"|"not_run";ueErrors:number|null;ueWarnings:number|null}[];
 };
 export async function runCatalogDiscovery(directory: string|undefined, blocks: unknown[], onEvent:(message:string)=>void){
  const queries=extractComponentQueries(blocks);
