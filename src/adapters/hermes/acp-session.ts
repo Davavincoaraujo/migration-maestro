@@ -120,6 +120,15 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
               if (process.env.MAESTRO_ACP_ERROR_DETAIL === "1") {
                 // Local opt-in only: may contain sensitive provider information.
                 console.error("[ACP SESSION ERROR DETAIL]", error.message);
+                const data = error.data;
+                if (data && typeof data === "object" && !Array.isArray(data)) {
+                  const details = (data as Record<string, unknown>).details;
+                  if (typeof details === "string") {
+                    console.error("[ACP SESSION INTERNAL DETAILS]", details.slice(0, 12000));
+                  } else {
+                    console.error("[ACP SESSION INTERNAL DETAILS TYPE]", Array.isArray(details) ? "array" : typeof details);
+                  }
+                }
               }
             }
             if (msg.jsonrpc !== "2.0" || msg.error || !result || typeof result.sessionId !== "string" || !result.sessionId) {
