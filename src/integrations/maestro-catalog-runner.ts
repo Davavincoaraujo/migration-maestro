@@ -60,10 +60,12 @@ export async function runCatalogDiscovery(directory: string|undefined, blocks: u
    // UE CLI accepts a local relative component path, never an arbitrary catalog identifier.
    if(inspected && /^[a-zA-Z0-9_-]+(?:\\/[a-zA-Z0-9_-]+)*$/.test(candidate.id)&&candidate.id.length<=180){
     onEvent("Validando padrão UE para candidato de: "+query);
-    const gate=await evaluateUeValidationGate(candidate.id);
-    ueValidation=gate.validation;
-    ueErrors=gate.errors;
-    ueWarnings=gate.warnings;
+    try{
+     const gate=await evaluateUeValidationGate(candidate.id);
+     ueValidation=gate.validation;
+     ueErrors=gate.errors;
+     ueWarnings=gate.warnings;
+    }catch{ueValidation="blocked";}
    }
   }
   results.push({query,candidateCount:matches.candidates.length,rejectedRecords:matches.rejectedRecords,inspected,inspectionFailed,ueValidation,ueErrors,ueWarnings});
