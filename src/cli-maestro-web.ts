@@ -19,7 +19,7 @@ form.addEventListener("submit",async e=>{e.preventDefault();button.disabled=true
 const server = createServer(async (req,res) => {
  const send=(status:number,value:unknown)=>{res.writeHead(status,{"content-type":"application/json; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff"});res.end(JSON.stringify(value));};
  if(req.method==="GET"&&req.url==="/"){res.writeHead(200,{"content-type":"text/html; charset=utf-8","content-security-policy":"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'","cache-control":"no-store"});res.end(html);return;}
- if(req.method==="GET"&&/^\\/api\\/runs\\/[a-f0-9-]+\\/evidence$/.test(req.url??"")){const id=req.url!.split("/")[3];const run=runs.get(id);return run?.evidence?send(200,{content:run.evidence,tool:run.tool}):send(404,{error:"EVIDENCE_NOT_AVAILABLE"});}
+ if(req.method==="GET"&&req.url?.startsWith("/api/runs/")&&req.url.endsWith("/evidence")){const parts=req.url.split("/");const id=parts[3];if(parts.length!==5||!/^[a-f0-9-]{36}$/.test(id))return send(404,{error:"NOT_FOUND"});const run=runs.get(id);return run?.evidence?send(200,{content:run.evidence,tool:run.tool}):send(404,{error:"EVIDENCE_NOT_AVAILABLE"});}
  if(req.method==="GET"&&req.url?.startsWith("/api/runs/")){const run=runs.get(req.url.slice(10));return run?send(200,run):send(404,{error:"RUN_NOT_FOUND"});}
  if(req.method==="POST"&&req.url==="/api/runs"){
   if(req.headers.origin && req.headers.origin!==`http://${host}:${port}`)return send(403,{error:"ORIGIN_DENIED"});
