@@ -5,7 +5,7 @@ test("Hermes bridge checks a local executable without invoking a shell",async()=
  assert.equal(await probeHermesCli({executable:process.execPath,args:["--version"]}),true);
 });
 test("Hermes bridge refuses unsafe command arguments",async()=>{
- await assert.rejects(probeHermesCli({executable:"node",args:["-e","process.exit(0)"]}),/INVALID_HERMES_CONFIG/);
+ assert.throws(()=>probeHermesCli({executable:"node",args:["-e","process.exit(0)"]}),/INVALID_HERMES_CONFIG/);
 });
 test("Hermes adapter never claims an unconfigured execution succeeded",async()=>{
  const adapter=new NousHermesAdapter({executable:process.execPath,args:["--version"]});
