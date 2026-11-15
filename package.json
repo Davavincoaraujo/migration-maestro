@@ -59,7 +59,8 @@
     "hermes:local-worktree": "tsx src/cli-hermes-local-worktree.ts",
     "hermes:catalog-scan": "tsx src/cli-hermes-catalog-scan.ts",
     "agent:handoff": "tsx src/cli-maestro-planning-handoff.ts",
-    "agent:dispatch": "tsx src/cli-maestro-agent-dispatch.ts"
+    "agent:dispatch": "tsx src/cli-maestro-agent-dispatch.ts",
+    "maestri:run": "tsx src/cli-maestri-run.ts"
   },
   "engines": {
     "node": ">=20"
