@@ -4,11 +4,12 @@ import { fetchAnalystCatalogLocal } from "./local-analyst-catalog.js";
 export function extractComponentQueries(blocks: unknown[]): string[] {
  const found = new Set<string>();
  const allowed = /^(carousel|banner|accordion|faq|hero|card|cards|tabs|form|header|footer|navigation|breadcrumb|image|video|table|slider|button|modal|grid|text|teaser)$/i;
+ const keys = new Set(["component","componentType","resourceType","name","components","componentName","component_type","resource_type","tagName","tag"]);
  function visit(value: unknown, depth: number): void {
-  if(depth > 8 || found.size >= 12 || !value || typeof value !== "object") return;
-  if(Array.isArray(value)){for(const item of value.slice(0,100))visit(item,depth+1);return;}
-  for(const [key,item] of Object.entries(value).slice(0,100)){
-   if(["component","componentType","resourceType","type","name","components"].includes(key)&&typeof item==="string"){
+  if(depth > 10 || found.size >= 12 || !value || typeof value !== "object") return;
+  if(Array.isArray(value)){for(const item of value.slice(0,150))visit(item,depth+1);return;}
+  for(const [key,item] of Object.entries(value).slice(0,150)){
+   if(keys.has(key)&&typeof item==="string"){
     const token=item.split("/").pop()?.trim()??"";
     if(allowed.test(token))found.add(token.toLowerCase());
    }
@@ -19,11 +20,17 @@ export function extractComponentQueries(blocks: unknown[]): string[] {
   if(!block || typeof block!=="object")continue;
   const item=block as {type?:unknown;text?:unknown};
   if(item.type==="text"&&typeof item.text==="string"&&item.text.length<500000){
-   try{visit(JSON.parse(item.text),0);}catch{/* Evidence may be prose; do not invent component names. */}
-  }
+   try{visit(JSON.parse(item.text),0);}catch{
+    // MCP output can wrap JSON in Markdown fences or prose. Parse only balanced JSON objects.
+    const text=item.text;
+    const fence=text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);
+    if(fence){try{visit(JSON.parse(fence[1]),0);}catch{/* not structured */}}
+   }
+  } else visit(block,0);
  }
  return [...found];
 }
+
 export async function runCatalogDiscovery(directory: string|undefined, blocks: unknown[], onEvent:(message:string)=>void){
  const queries=extractComponentQueries(blocks);
  if(!queries.length)return {status:"needs_component_review" as const,queries:[],results:[]};
