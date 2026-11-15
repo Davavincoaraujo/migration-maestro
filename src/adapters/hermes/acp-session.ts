@@ -6,6 +6,9 @@ import { join } from "node:path";
 export type SessionProbeResult = {
   initialized: boolean;
   sessionCreated: boolean;
+  stage: "starting" | "waiting_initialize" | "waiting_session" | "completed";
+  serverRequestsDenied: number;
+  notificationsReceived: number;
   reason: "SESSION_CREATED" | "INITIALIZE_FAILED" | "SESSION_FAILED" | "PROCESS_UNAVAILABLE" | "PROCESS_EXITED" | "TIMEOUT" | "PROTOCOL_ERROR";
 };
 
@@ -24,20 +27,24 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 1500
       });
       let settled = false;
       let initialized = false;
+      let stage: SessionProbeResult["stage"] = "starting";
+      let serverRequestsDenied = 0;
+      let notificationsReceived = 0;
       let buffer = "";
       let timer: ReturnType<typeof setTimeout> | undefined;
-      const finish = (result: SessionProbeResult) => {
+      const finish = (result: Pick<SessionProbeResult, "initialized" | "sessionCreated" | "reason">) => {
         if (settled) return;
         settled = true;
         if (timer) clearTimeout(timer);
         child.stdin?.destroy();
         child.kill();
-        resolve(result);
+        resolve({ ...result, stage, serverRequestsDenied, notificationsReceived });
       };
       const send = (id: number, method: string, params: Record<string, unknown>) => {
         if (settled || child.stdin?.destroyed) return;
         child.stdin?.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
       };
+      stage = "waiting_initialize";
       timer = setTimeout(() => finish({ initialized, sessionCreated: false, reason: "TIMEOUT" }), timeoutMs);
       child.on("error", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_UNAVAILABLE" }));
       child.on("close", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_EXITED" }));
@@ -70,6 +77,7 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 1500
               return;
             }
             initialized = true;
+            stage = "waiting_session";
             send(2, "session/new", { cwd, mcpServers: [] });
           } else if (msg.id === 2) {
             const result = msg.result as Record<string, unknown> | undefined;
@@ -78,14 +86,18 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 1500
               return;
             }
             // Do not expose sessionId, local paths, or server payloads in diagnostics.
+            stage = "completed";
             finish({ initialized: true, sessionCreated: true, reason: "SESSION_CREATED" });
-          } else if (typeof msg.id === "number") {
-            // Do not service server-initiated requests; no permission or tool requests are authorized.
+          } else if ((typeof msg.id === "number" || typeof msg.id === "string") && typeof msg.method === "string") {
+            // ACP JSON-RPC ids may be strings. Deny all client requests; never authorize tools.
+            serverRequestsDenied++;
             sendError(msg.id);
+          } else if (typeof msg.method === "string") {
+            notificationsReceived++;
           }
         }
       });
-      const sendError = (id: number) => {
+      const sendError = (id: number | string) => {
         if (settled || child.stdin?.destroyed) return;
         child.stdin?.write(JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32601, message: "Client method not available" } }) + "\n");
       };
