@@ -50,7 +50,8 @@
     "hermes:batch-resume": "tsx src/cli-hermes-batch-resume.ts",
     "hermes:tasks": "tsx src/cli-hermes-tasks.ts",
     "hermes:approval": "tsx src/cli-hermes-approval.ts",
-    "hermes:readiness": "tsx src/cli-hermes-readiness.ts"
+    "hermes:readiness": "tsx src/cli-hermes-readiness.ts",
+    "hermes:workspace": "tsx src/cli-hermes-workspace.ts"
   },
   "engines": {
     "node": ">=20"
