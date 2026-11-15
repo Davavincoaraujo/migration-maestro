@@ -1,12 +1,13 @@
 /** Explicit Maestri CLI bridge. Run from a Maestri terminal with MAESTRI_SOCKET. */
 import { spawn } from "node:child_process";
-import { validatePageUrl } from "./integrations/url-analysis-orchestrator.js";
+import { analyzeUrlViaMcp, validatePageUrl } from "./integrations/url-analysis-orchestrator.js";
 import { runAgentPlanning } from "./maestro-agent-planning.js";
 import { createDispatchPreview } from "./maestro-agent-dispatch.js";
 
 type BridgeResult = {
   mode: "maestri-local";
   url: string;
+  analysis: "completed";
   planning: "completed";
   dispatched: string[];
   executionAuthorized: false;
@@ -44,7 +45,9 @@ export async function askMaestri(name: string, prompt: string, timeoutMs = 30000
 export async function runMaestriBridge(urlInput: string): Promise<BridgeResult> {
   requireMaestriSocket(process.env.MAESTRI_SOCKET);
   const url = validatePageUrl(urlInput);
-  const query = "hero"; // Generic connectivity probe; not evidence about the supplied URL.
+  const analysis = await analyzeUrlViaMcp(process.env.MAESTRO_ANALYTICS_DIR, url);
+  if (analysis.stage !== "analyzed") throw Error("MAESTRO_URL_ANALYSIS_UNAVAILABLE");
+  const query = "hero"; // Generic connector probe; not evidence about URL-specific components.
   const planning = await runAgentPlanning(query);
   if (!planning.plan) throw Error("MAESTRO_PLANNING_UNAVAILABLE");
   const dispatch = createDispatchPreview(planning.plan);
@@ -62,7 +65,7 @@ export async function runMaestriBridge(urlInput: string): Promise<BridgeResult> 
     dispatched.push(target.name);
   }
   return {
-    mode: "maestri-local", url, planning: "completed", dispatched,
+    mode: "maestri-local", url, analysis: "completed", planning: "completed", dispatched,
     executionAuthorized: false, publishingAuthorized: false
   };
 }
