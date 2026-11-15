@@ -54,7 +54,7 @@ export async function preflightHermesBranches(
   const bare = await git(root, "rev-parse", "--is-bare-repository");
   if (bare !== "false") throw Error("BARE_REPOSITORY_NOT_SUPPORTED");
   const status = await git(root, "status", "--porcelain", "--untracked-files=all");
-  const clean = status === "";
+  const clean = status.split("\n").filter(Boolean).every(line => line === "?? .maestro-demo-repo");
   const baseCommit = await git(root, "rev-parse", "--verify", baseRef + "^{commit}").catch(() => "");
   if (!isHash(baseCommit)) throw Error("BASE_COMMIT_NOT_FOUND");
   const rows: BranchPreflight["tasks"] = [];
