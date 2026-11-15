@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scanHermesComponentCatalog } from "../src/integrations/hermes-component-catalog-adapter.js";
 
-test("reads nested FAQ fields and flags imported tab helper without executing TS", async () => {
+test("reads nested FAQ fields and statically resolves tab helper without executing TS", async () => {
   const root = await mkdtemp(join(tmpdir(), "maestro-catalog-"));
   try {
     const folder = join(root, "src/frontend/components/principal/faq/v1");
@@ -26,8 +26,8 @@ export default definition;
     assert.equal(result.components[0].key, "principal/faq@v1");
     assert.equal(result.components[0].hasMapper, true);
     assert.equal(result.components[0].fields[1].fields?.[0].name, "question");
-    assert.equal(result.components[0].unresolvedFields, 1);
-    assert.ok(result.warnings.some(w => w.reason === "UNRESOLVED_FIELDS:1"));
+    assert.equal(result.components[0].unresolvedFields, 0);
+    assert.equal(result.components[0].fields[0].type, "tab");
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test("duplicate qualified keys are reported", async () => {
