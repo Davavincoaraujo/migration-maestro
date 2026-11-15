@@ -55,7 +55,8 @@ function countUnresolved(items: CatalogField[]): number {
 }
 function parse(content: string, path: string, hasMapper: boolean): CatalogComponent | null {
   const source = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  if (source.parseDiagnostics.length) throw Error("INVALID_TYPESCRIPT");
+  const diagnostics = ts.transpileModule(content, { fileName: path, reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.ES2022 } }).diagnostics ?? [];
+  if (diagnostics.some(d => d.category === ts.DiagnosticCategory.Error)) throw Error("INVALID_TYPESCRIPT");
   const constants = new Map<string, string>();
   let definition: ts.ObjectLiteralExpression | null = null;
   for (const statement of source.statements) {
