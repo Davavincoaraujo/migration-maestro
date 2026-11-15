@@ -41,6 +41,7 @@
     "maestri:discover": "tsx src/cli-maestri.ts",
     "hermes": "tsx src/cli-hermes.ts",
     "integration:doctor": "tsx src/cli-integration-doctor.ts",
+    "integration:smoke": "tsx src/cli-maestro-integration-smoke.ts",
     "hermes:acp-check": "tsx src/cli-hermes-acp-check.ts",
     "hermes:acp-handshake": "tsx src/cli-hermes-acp-handshake.ts",
     "hermes:acp-session": "tsx src/cli-hermes-acp-session.ts",
