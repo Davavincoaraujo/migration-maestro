@@ -70,14 +70,20 @@ function helper(call: ts.CallExpression, constants: Map<string, string>): Catalo
   }
   return null;
 }
-function fields(expr: ts.Expression | undefined, constants: Map<string, string>): CatalogField[] {
+function fields(expr: ts.Expression | undefined, constants: Map<string, string>, arrays: Map<string, ts.Expression> = new Map(), visiting: Set<string> = new Set()): CatalogField[] {
   if (!expr) return [];
+  if (ts.isParenthesizedExpression(expr)) return fields(expr.expression, constants, arrays, visiting);
+  if (ts.isIdentifier(expr)) {
+    if (visiting.has(expr.text) || !arrays.has(expr.text)) return [unknown()];
+    const next = new Set(visiting); next.add(expr.text);
+    return fields(arrays.get(expr.text), constants, arrays, next);
+  }
   if (!ts.isArrayLiteralExpression(expr)) return [unknown()];
   const output: CatalogField[] = [];
   for (const element of expr.elements) {
     if (ts.isSpreadElement(element)) {
       if (ts.isCallExpression(element.expression)) output.push(...(helper(element.expression, constants) ?? [unknown()]));
-      else output.push(unknown());
+      else output.push(...fields(element.expression, constants, arrays, visiting));
       continue;
     }
     if (ts.isCallExpression(element)) {
@@ -94,8 +100,8 @@ function fields(expr: ts.Expression | undefined, constants: Map<string, string>)
       label: literal(property(element, "label"), constants),
       type: literal(property(element, "type"), constants)
     };
-    if (nested) field.fields = fields(nested, constants);
-    if (!field.name || !field.type || (nested && !ts.isArrayLiteralExpression(nested))) field.unresolved = true;
+    if (nested) field.fields = fields(nested, constants, arrays, visiting);
+    if (!field.name || !field.type) field.unresolved = true;
     output.push(field);
   }
   return output;
@@ -108,6 +114,7 @@ function parse(content: string, path: string, hasMapper: boolean): CatalogCompon
   const diagnostics = ts.transpileModule(content, { fileName: path, reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.ES2022 } }).diagnostics ?? [];
   if (diagnostics.some(d => d.category === ts.DiagnosticCategory.Error)) throw Error("INVALID_TYPESCRIPT");
   const constants = new Map<string, string>();
+  const arrays = new Map<string, ts.Expression>();
   let definition: ts.ObjectLiteralExpression | null = null;
   for (const statement of source.statements) {
     if (!ts.isVariableStatement(statement)) continue;
@@ -116,6 +123,7 @@ function parse(content: string, path: string, hasMapper: boolean): CatalogCompon
       const value = decl.initializer;
       if (value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)))
         constants.set(decl.name.text, value.text);
+      if (value && ts.isArrayLiteralExpression(value)) arrays.set(decl.name.text, value);
       const annotated = decl.type?.getText(source).replace(/\s/g, "") === "ComponentDefinition";
       if (annotated && value && ts.isObjectLiteralExpression(value)) definition = value;
     }
@@ -126,7 +134,7 @@ function parse(content: string, path: string, hasMapper: boolean): CatalogCompon
   const group = literal(property(obj, "group"), constants);
   const version = literal(property(obj, "version"), constants);
   if (!name || !group || !version) throw Error("MISSING_COMPONENT_IDENTITY");
-  const fieldList = fields(property(obj, "fields"), constants);
+  const fieldList = fields(property(obj, "fields"), constants, arrays);
   const singleton = property(obj, "singleton");
   const exported = source.statements.find(s => ts.isExportAssignment(s)) as ts.ExportAssignment | undefined;
   const exportTransform = exported && ts.isCallExpression(exported.expression) && ts.isIdentifier(exported.expression.expression) && exported.expression.expression.text === "organizarDialog"
