@@ -23,7 +23,7 @@ export function extractComponentQueries(blocks: unknown[]): string[] {
    try{visit(JSON.parse(item.text),0);}catch{
     // MCP output can wrap JSON in Markdown fences or prose. Parse only balanced JSON objects.
     const text=item.text;
-    const fence=text.match(/```(?:json)?\\s*([\\s\\S]*?)```/i);
+    const fence=text.match(/```(?:json)?\s*([\s\S]*?)```/i);
     if(fence){try{visit(JSON.parse(fence[1]),0);}catch{/* not structured */}}
    }
   } else visit(block,0);
