@@ -23,7 +23,7 @@ export function probeAcpHandshake(config: AcpHandshakeConfig = {}): Promise<AcpH
   const timeoutMs = config.timeoutMs ?? 10000;
   const safe = /^[a-zA-Z0-9._/-]{1,256}$/;
   if (!safe.test(executable) || !Array.isArray(args) || args.length > 8 ||
-      args.some(arg => typeof arg !== "string" || !safe.test(arg)) ||
+      (args.length !== 1 || args[0] !== "acp") ||
       !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 30000) {
     throw new Error("INVALID_ACP_CONFIG");
   }
