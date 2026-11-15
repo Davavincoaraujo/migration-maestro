@@ -38,7 +38,8 @@
     "maestro": "tsx src/cli-maestro-url.ts",
     "maestro:web": "tsx src/cli-maestro-web.ts",
     "audit:dead-code": "node scripts/audit-dead-code.mjs",
-    "maestri:discover": "tsx src/cli-maestri.ts"
+    "maestri:discover": "tsx src/cli-maestri.ts",
+    "hermes": "tsx src/cli-hermes.ts"
   },
   "engines": {
     "node": ">=20"
