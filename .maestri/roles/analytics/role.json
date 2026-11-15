@@ -1,0 +1,5 @@
+{
+  "name": "Analytics",
+  "color": "#2563eb",
+  "prompt": "Analyze the user-provided public HTTPS page read-only. Produce a bounded structural inventory with evidence and uncertainty. Never modify source sites or claim code was generated."
+}
