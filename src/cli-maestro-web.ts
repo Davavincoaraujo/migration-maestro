@@ -46,7 +46,8 @@ const server = createServer(async (req,res) => {
     run.plan!.tasks.find(t=>t.id==="catalog")!.status=discovery.results.length>0&&discovery.results.every(r=>r.inspected===1)?"review_required":"pending";
     run.plan!.tasks.find(t=>t.id==="ue_gate")!.status=discovery.results.length>0&&discovery.results.every(r=>r.ueValidation==="passed"||r.ueValidation==="passed_with_warnings")?"review_required":"pending";
     run.status="review_required";
-    // Extraction of component names is not a completed structural interpretation.\n    run.plan!.tasks.find(t=>t.id==="interpret")!.status="review_required";
+    // Extraction of component names is not a completed structural interpretation.
+    run.plan!.tasks.find(t=>t.id==="interpret")!.status="review_required";
     addEvent(run,discovery.status==="review_required"?"Descoberta encerrada; abra as etapas Catálogo e UE para consultar o diagnóstico por componente":"Nenhum componente estruturado reconhecido; revisão necessária");
     await writeFile(join(dir,"discovery.json"),JSON.stringify(discovery,null,2),{mode:0o600});
    }).catch(e=>{run.status="review_required";run.plan!.tasks.find(t=>t.id==="catalog")!.status="review_required";run.error=/^[A-Z_]+$/.test(e?.message??"")?e.message:"CATALOG_DISCOVERY_FAILED";addEvent(run,"Falha na consulta ao catálogo; revisão necessária");});
