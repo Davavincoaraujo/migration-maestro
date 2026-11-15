@@ -15,7 +15,7 @@ export type SessionProbeResult = {
 
 /** Only initialize and session/new in an isolated temporary directory. Never send session/prompt. */
 export async function probeHermesSession(executable = "hermes", timeoutMs = 30000): Promise<SessionProbeResult> {
-  if (!/^[a-zA-Z0-9._/-]{1,256}$/.test(executable) || !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 30000) {
+  if (!/^[a-zA-Z0-9._/-]{1,256}$/.test(executable) || !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 120000) {
     throw new Error("INVALID_SESSION_CONFIG");
   }
   const dir = await mkdtemp(join(tmpdir(), "migration-maestro-acp-"));
@@ -38,6 +38,7 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
       let notificationsReceived = 0;
       let stderrObserved = false;
       const debug = process.env.MAESTRO_ACP_DEBUG === "1";
+      const showStderr = process.env.MAESTRO_ACP_STDERR === "1";
       let buffer = "";
       let timer: ReturnType<typeof setTimeout> | undefined;
       const finish = (result: Pick<SessionProbeResult, "initialized" | "sessionCreated" | "reason">) => {
@@ -58,7 +59,8 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
       child.on("close", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_EXITED" }));
       child.stderr?.on("data", (chunk: Buffer) => {
         stderrObserved = true;
-        if (debug) console.error("[HERMES STDERR]", { stage, bytes: chunk.length });
+        if (showStderr) process.stderr.write(chunk);
+        else if (debug) console.error("[HERMES STDERR]", { stage, bytes: chunk.length });
       });
       child.stdin?.on("error", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_EXITED" }));
       child.stdout?.on("data", (chunk: Buffer) => {
