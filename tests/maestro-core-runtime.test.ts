@@ -12,13 +12,13 @@ const workflow:WorkflowDefinition={id:"generic",version:1,tasks:[
 const approval:ApprovalRecord={id:"approval1",runId:"run1",taskId:"edit",state:"approved",requestedAt:now,decidedAt:now,actorId:"reviewer",evidenceIds:[]};
 test("read-only tool allowed and writes denied without approval",()=>{
  const tools=new Map<string,ToolDefinition>([["reader",{id:"reader",adapter:"mcp",effect:"read"}],["editor",{id:"editor",adapter:"cli",effect:"write"}]]);
- assert.equal(authorizeTool(workflow.tasks[0],"reader",tools).allowed,true);
- assert.deepEqual(authorizeTool(workflow.tasks[1],"editor",tools),{allowed:false,reason:"APPROVAL_REQUIRED"});
- assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,approval).allowed,true);
+ assert.equal(authorizeTool(workflow.tasks[0],"reader",tools,"run1").allowed,true);
+ assert.deepEqual(authorizeTool(workflow.tasks[1],"editor",tools,"run1"),{allowed:false,reason:"APPROVAL_REQUIRED"});
+ assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,"run1",approval).allowed,true);
 });
 test("rejects cross-task and rejected approvals",()=>{
  const tools=new Map<string,ToolDefinition>([["editor",{id:"editor",adapter:"cli",effect:"write"}]]);
- assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,{...approval,taskId:"inspect"}).allowed,false);
+ assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,"run1",{...approval,taskId:"inspect"}).allowed,false);
  assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,{...approval,state:"rejected"}).allowed,false);
 });
 test("dependency gate prevents premature editing",()=>{
