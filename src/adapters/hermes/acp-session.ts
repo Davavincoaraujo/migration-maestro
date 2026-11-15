@@ -24,7 +24,12 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
     return await new Promise<SessionProbeResult>(resolve => {
       const child = spawn(executable, ["acp"], {
         shell: false, cwd, stdio: ["pipe", "pipe", "pipe"],
-        env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "" }
+        env: {
+          PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "",
+          ...Object.fromEntries(["LANG", "LC_ALL", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME"]
+            .filter(key => process.env[key] !== undefined)
+            .map(key => [key, process.env[key]!]))
+        }
       });
       let settled = false;
       let initialized = false;
@@ -32,6 +37,7 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
       let serverRequestsDenied = 0;
       let notificationsReceived = 0;
       let stderrObserved = false;
+      const debug = process.env.MAESTRO_ACP_DEBUG === "1";
       let buffer = "";
       let timer: ReturnType<typeof setTimeout> | undefined;
       const finish = (result: Pick<SessionProbeResult, "initialized" | "sessionCreated" | "reason">) => {
@@ -50,7 +56,10 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
       timer = setTimeout(() => finish({ initialized, sessionCreated: false, reason: "TIMEOUT" }), timeoutMs);
       child.on("error", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_UNAVAILABLE" }));
       child.on("close", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_EXITED" }));
-      child.stderr?.on("data", () => { stderrObserved = true; });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderrObserved = true;
+        if (debug) console.error("[HERMES STDERR]", { stage, bytes: chunk.length });
+      });
       child.stdin?.on("error", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_EXITED" }));
       child.stdout?.on("data", (chunk: Buffer) => {
         if (settled) return;
@@ -69,6 +78,13 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
             const parsed: unknown = JSON.parse(line);
             if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid");
             msg = parsed as Record<string, unknown>;
+            if (debug) console.error("[ACP EVENT]", {
+              stage,
+              id: typeof msg.id === "number" ? msg.id : typeof msg.id === "string" ? "string-id" : undefined,
+              method: typeof msg.method === "string" ? msg.method : undefined,
+              hasResult: Object.prototype.hasOwnProperty.call(msg, "result"),
+              hasError: Object.prototype.hasOwnProperty.call(msg, "error")
+            });
           } catch {
             finish({ initialized, sessionCreated: false, reason: "PROTOCOL_ERROR" });
             return;
@@ -81,6 +97,8 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
             }
             initialized = true;
             stage = "waiting_session";
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => finish({ initialized, sessionCreated: false, reason: "TIMEOUT" }), timeoutMs);
             send(2, "session/new", { cwd, mcpServers: [] });
           } else if (msg.id === 2) {
             const result = msg.result as Record<string, unknown> | undefined;
