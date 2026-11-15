@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, open, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { resumeHermesBatch } from "./hermes-checkpoint-runner.js";
 import { validatePageInputs, type PageInput } from "./hermes-batch-planner.js";
@@ -76,8 +76,7 @@ export async function orchestrateHermesTasks(
     })), reused: 0, executed: 0
   };
   try {
-    // State is always reconstructed from validated checkpoints, not blindly trusted.
-    try { await readFile(statePath, "utf8"); } catch { /* no prior state */ }
+    // Reconstruct state from validated checkpoints; never trust an old running state.
     await atomicSave(statePath, state);
     const pending = new Set(tasks.map(t => t.id));
     while (pending.size) {
