@@ -104,6 +104,20 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
             send(2, "session/new", { cwd, mcpServers: [] });
           } else if (msg.id === 2) {
             const result = msg.result as Record<string, unknown> | undefined;
+            if (msg.error && debug) {
+              const error = typeof msg.error === "object" && msg.error !== null
+                ? msg.error as Record<string, unknown>
+                : {};
+              console.error("[ACP SESSION ERROR]", {
+                code: typeof error.code === "number" ? error.code : "unknown",
+                messageLength: typeof error.message === "string" ? error.message.length : 0,
+                hasData: Object.prototype.hasOwnProperty.call(error, "data")
+              });
+              if (process.env.MAESTRO_ACP_ERROR_DETAIL === "1") {
+                // Local opt-in only: may contain sensitive provider information.
+                console.error("[ACP SESSION ERROR DETAIL]", error.message);
+              }
+            }
             if (msg.jsonrpc !== "2.0" || msg.error || !result || typeof result.sessionId !== "string" || !result.sessionId) {
               finish({ initialized, sessionCreated: false, reason: "SESSION_FAILED" });
               return;
