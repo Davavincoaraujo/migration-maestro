@@ -39,7 +39,8 @@
     "maestro:web": "tsx src/cli-maestro-web.ts",
     "audit:dead-code": "node scripts/audit-dead-code.mjs",
     "maestri:discover": "tsx src/cli-maestri.ts",
-    "hermes": "tsx src/cli-hermes.ts"
+    "hermes": "tsx src/cli-hermes.ts",
+    "integration:doctor": "tsx src/cli-integration-doctor.ts"
   },
   "engines": {
     "node": ">=20"
