@@ -19,7 +19,7 @@ test("read-only tool allowed and writes denied without approval",()=>{
 test("rejects cross-task and rejected approvals",()=>{
  const tools=new Map<string,ToolDefinition>([["editor",{id:"editor",adapter:"cli",effect:"write"}]]);
  assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,"run1",{...approval,taskId:"inspect"}).allowed,false);
- assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,{...approval,state:"rejected"}).allowed,false);
+ assert.equal(authorizeTool(workflow.tasks[1],"editor",tools,"run1",{...approval,state:"rejected"}).allowed,false);
 });
 test("dependency gate prevents premature editing",()=>{
  const run=createRunPlan(workflow,"run1",now);
