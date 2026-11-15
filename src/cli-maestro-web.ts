@@ -26,7 +26,7 @@ const server = createServer(async (req,res) => {
   let raw="";for await(const chunk of req){raw+=String(chunk);if(raw.length>4096)return send(413,{error:"REQUEST_TOO_LARGE"});}
   let url:string;try{url=validatePageUrl(JSON.parse(raw).url)}catch{return send(400,{error:"INVALID_PAGE_URL"});}
   const id=randomUUID(),run:Run={id,status:"running",stage:"migration_analyst",events:[],startedAt:new Date().toISOString()};addEvent(run,"Execução iniciada");runs.set(id,run);send(202,{id});
-  void analyzeUrlViaMcp(process.env.MAESTRO_ANALYTICS_DIR,url,message=>addEvent(run,message)).then(async result=>{addEvent(run,result.stage==="analyzed"?"Análise concluída; revisão pendente":"Análise bloqueada por configuração");run.finishedAt=new Date().toISOString();run.status=result.stage==="analyzed"?"review_required":"blocked";run.stage=result.stage==="analyzed"?"plan_tasks":"migration_analyst";run.tool=result.tool;run.resultBlocks=result.content.length;
+  void analyzeUrlViaMcp(process.env.MAESTRO_ANALYTICS_DIR,url,message=>addEvent(run,message)).then(async result=>{addEvent(run,result.stage==="analyzed"?"Análise concluída; revisão pendente":"Análise bloqueada por configuração");run.finishedAt=new Date().toISOString();run.stage=result.stage==="analyzed"?"plan_tasks":"migration_analyst";run.tool=result.tool;run.resultBlocks=result.content.length;
   if(result.stage==="analyzed"){
    run.plan=buildMigrationPlan(result.content);
    const directory=resolve("local-output","runs",id);
@@ -36,6 +36,7 @@ const server = createServer(async (req,res) => {
    await writeFile(join(directory,"plan.json"),JSON.stringify({runId:id,urlFingerprint:fingerprint,...run.plan},null,2),{mode:0o600});
    addEvent(run,"Evidências e DAG preliminar salvos localmente");
   }
+  run.status=result.stage==="analyzed"?"review_required":"blocked";
   if(result.reason)run.error=result.reason;}).catch(e=>{run.status="failed";run.finishedAt=new Date().toISOString();addEvent(run,"Falha na análise; consulte o código de erro");run.error=/^[A-Z_]+$/.test(e?.message??"")?e.message:"ANALYSIS_FAILED";});
   return;
  }
