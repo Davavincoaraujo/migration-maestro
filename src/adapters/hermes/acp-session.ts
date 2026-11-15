@@ -9,11 +9,12 @@ export type SessionProbeResult = {
   stage: "starting" | "waiting_initialize" | "waiting_session" | "completed";
   serverRequestsDenied: number;
   notificationsReceived: number;
+  stderrObserved: boolean;
   reason: "SESSION_CREATED" | "INITIALIZE_FAILED" | "SESSION_FAILED" | "PROCESS_UNAVAILABLE" | "PROCESS_EXITED" | "TIMEOUT" | "PROTOCOL_ERROR";
 };
 
 /** Only initialize and session/new in an isolated temporary directory. Never send session/prompt. */
-export async function probeHermesSession(executable = "hermes", timeoutMs = 15000): Promise<SessionProbeResult> {
+export async function probeHermesSession(executable = "hermes", timeoutMs = 30000): Promise<SessionProbeResult> {
   if (!/^[a-zA-Z0-9._/-]{1,256}$/.test(executable) || !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 30000) {
     throw new Error("INVALID_SESSION_CONFIG");
   }
@@ -22,7 +23,7 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 1500
     const cwd = await realpath(dir);
     return await new Promise<SessionProbeResult>(resolve => {
       const child = spawn(executable, ["acp"], {
-        shell: false, cwd, stdio: ["pipe", "pipe", "ignore"],
+        shell: false, cwd, stdio: ["pipe", "pipe", "pipe"],
         env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "" }
       });
       let settled = false;
@@ -30,6 +31,7 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 1500
       let stage: SessionProbeResult["stage"] = "starting";
       let serverRequestsDenied = 0;
       let notificationsReceived = 0;
+      let stderrObserved = false;
       let buffer = "";
       let timer: ReturnType<typeof setTimeout> | undefined;
       const finish = (result: Pick<SessionProbeResult, "initialized" | "sessionCreated" | "reason">) => {
@@ -38,7 +40,7 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 1500
         if (timer) clearTimeout(timer);
         child.stdin?.destroy();
         child.kill();
-        resolve({ ...result, stage, serverRequestsDenied, notificationsReceived });
+        resolve({ ...result, stage, serverRequestsDenied, notificationsReceived, stderrObserved });
       };
       const send = (id: number, method: string, params: Record<string, unknown>) => {
         if (settled || child.stdin?.destroyed) return;
@@ -48,6 +50,7 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 1500
       timer = setTimeout(() => finish({ initialized, sessionCreated: false, reason: "TIMEOUT" }), timeoutMs);
       child.on("error", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_UNAVAILABLE" }));
       child.on("close", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_EXITED" }));
+      child.stderr?.on("data", () => { stderrObserved = true; });
       child.stdin?.on("error", () => finish({ initialized, sessionCreated: false, reason: "PROCESS_EXITED" }));
       child.stdout?.on("data", (chunk: Buffer) => {
         if (settled) return;
