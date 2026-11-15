@@ -9,5 +9,5 @@ test("session probe validates executable and timeout", async () => {
 
 test("session probe fails closed without executable", async () => {
   const result = await probeHermesSession("missing-hermes-session-executable-xyz", 1000);
-  assert.deepEqual(result, { initialized: false, sessionCreated: false, stage: "waiting_initialize", serverRequestsDenied: 0, notificationsReceived: 0, reason: "PROCESS_UNAVAILABLE" });
+  assert.deepEqual(result, { initialized: false, sessionCreated: false, stage: "waiting_initialize", serverRequestsDenied: 0, notificationsReceived: 0, stderrObserved: false, reason: "PROCESS_UNAVAILABLE" });
 });
