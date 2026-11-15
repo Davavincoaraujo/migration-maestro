@@ -44,3 +44,26 @@ test("duplicate qualified keys are reported", async () => {
     assert.ok(result.warnings.some(w => w.reason === "DUPLICATE_KEY:principal/faq@v1"));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test("recognizes legacy helper fields and warns about organizarDialog transform", async () => {
+  const root = await mkdtemp(join(tmpdir(), "maestro-legacy-"));
+  try {
+    const folder = join(root, "src/frontend/components/legado/classic/HeroImagem/v1");
+    await mkdir(folder, { recursive: true });
+    await writeFile(join(folder, "definition.ts"), `
+const definition: ComponentDefinition = {
+  modelId: "legado-classic--hero-imagem", name: "hero-imagem", group: "legado/classic",
+  version: "v1", title: "Hero", description: "Imagem", icon: "image",
+  fields: [tabConteudo(), imageField("imagem", "Imagem", "Descrição"),
+    ...dimensoesFields("imagem", "Imagem"), tabAvancado(), anchorField()]
+};
+export default organizarDialog(definition);
+`);
+    const result = await scanHermesComponentCatalog(root);
+    assert.deepEqual(result.components[0].fields.map(f => f.name),
+      ["tabConteudo", "imagem", "imagemLargura", "imagemAltura", "tabAvancado", "anchorId"]);
+    assert.equal(result.components[0].unresolvedFields, 0);
+    assert.equal(result.components[0].exportTransform, "organizarDialog");
+    assert.ok(result.warnings.some(w => w.reason === "EXPORT_TRANSFORM_NOT_APPLIED:organizarDialog"));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
