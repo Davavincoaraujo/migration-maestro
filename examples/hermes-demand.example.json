@@ -1,0 +1,14 @@
+{
+  "id":"portal-migration",
+  "title":"Migração sintética de páginas",
+  "features":[
+    {"id":"discovery","title":"Analisar componentes","tasks":[
+      {"id":"inventory","title":"Inventário de componentes","dependsOn":[]},
+      {"id":"spec","title":"Gerar especificações","dependsOn":["inventory"]}
+    ]},
+    {"id":"implementation","title":"Implementar componentes","dependsOn":["discovery"],"tasks":[
+      {"id":"component","title":"Implementar componente sintético","dependsOn":[]},
+      {"id":"tests","title":"Adicionar testes","dependsOn":["component"]}
+    ]}
+  ]
+}
