@@ -31,17 +31,61 @@ function literal(expr: ts.Expression | undefined, constants: Map<string, string>
   if (ts.isIdentifier(expr)) return constants.get(expr.text) ?? null;
   return null;
 }
+const unknown = (): CatalogField => ({ name: null, label: null, type: null, unresolved: true });
+function helper(call: ts.CallExpression, constants: Map<string, string>): CatalogField[] | null {
+  if (!ts.isIdentifier(call.expression)) return null;
+  const fn = call.expression.text;
+  const arg = (index: number) => literal(call.arguments[index], constants);
+  const single = (name: string | null, label: string | null, type: string): CatalogField[] =>
+    name ? [{ name, label, type }] : [unknown()];
+  const tabs: Record<string, [string, string]> = {
+    tabConteudo: ["tabConteudo", "Conteúdo"],
+    tabAparencia: ["tabAparencia", "Aparência"],
+    tabAvancado: ["tabAvancado", "Avançado"]
+  };
+  if (fn === "tab" && call.arguments.length === 2) return single(arg(0), arg(1), "tab");
+  if (tabs[fn] && !call.arguments.length) return single(tabs[fn][0], tabs[fn][1], "tab");
+  if (fn === "anchorField" && !call.arguments.length) return single("anchorId", "Âncora (identificador da seção)", "text");
+  if (fn === "dividerField" && !call.arguments.length) return single("divisor", "Linha divisória acima da seção", "boolean");
+  if (fn === "overlapField" && !call.arguments.length) return single("sobreposicao", "Encaixe com o banner acima", "select");
+  if (fn === "layoutField" && call.arguments.length === 1) return single("layout", "Visual do legado (migração)", "select");
+  if (fn === "dimensoesFields" && call.arguments.length === 2) {
+    const name = arg(0), label = arg(1);
+    return name && label ? [
+      { name: name + "Largura", label: label + " · largura original (px)", type: "text" },
+      { name: name + "Altura", label: label + " · altura original (px)", type: "text" }
+    ] : [unknown()];
+  }
+  const types: Record<string, string> = {
+    textField: "text", richTextField: "richtext", imageField: "asset",
+    documentField: "asset", videoField: "asset", altField: "text",
+    linkField: "aem-content", newTabField: "boolean", headingLevelField: "select"
+  };
+  if (types[fn]) {
+    const name = arg(0);
+    const label = fn === "newTabField" ? "Abrir o link em uma nova aba" :
+      fn === "altField" && call.arguments.length === 1 ? "Descrição da imagem (texto alternativo)" : arg(1);
+    return single(name, label, types[fn]);
+  }
+  return null;
+}
 function fields(expr: ts.Expression | undefined, constants: Map<string, string>): CatalogField[] {
   if (!expr) return [];
-  if (!ts.isArrayLiteralExpression(expr)) return [{ name: null, label: null, type: null, unresolved: true }];
-  return expr.elements.map(element => {
-    if (ts.isCallExpression(element) && ts.isIdentifier(element.expression) && element.expression.text === "tab" && element.arguments.length === 2) {
-      const name = literal(element.arguments[0], constants);
-      const label = literal(element.arguments[1], constants);
-      if (name && label) return { name, label, type: "tab" };
+  if (!ts.isArrayLiteralExpression(expr)) return [unknown()];
+  const output: CatalogField[] = [];
+  for (const element of expr.elements) {
+    if (ts.isSpreadElement(element)) {
+      if (ts.isCallExpression(element.expression)) output.push(...(helper(element.expression, constants) ?? [unknown()]));
+      else output.push(unknown());
+      continue;
+    }
+    if (ts.isCallExpression(element)) {
+      output.push(...(helper(element, constants) ?? [unknown()]));
+      continue;
     }
     if (!ts.isObjectLiteralExpression(element)) {
-      return { name: null, label: null, type: null, unresolved: true };
+      output.push(unknown());
+      continue;
     }
     const nested = property(element, "fields");
     const field: CatalogField = {
@@ -50,10 +94,10 @@ function fields(expr: ts.Expression | undefined, constants: Map<string, string>)
       type: literal(property(element, "type"), constants)
     };
     if (nested) field.fields = fields(nested, constants);
-    if (!field.name || !field.type || (nested && !ts.isArrayLiteralExpression(nested)))
-      field.unresolved = true;
-    return field;
-  });
+    if (!field.name || !field.type || (nested && !ts.isArrayLiteralExpression(nested))) field.unresolved = true;
+    output.push(field);
+  }
+  return output;
 }
 function countUnresolved(items: CatalogField[]): number {
   return items.reduce((n, item) => n + (item.unresolved ? 1 : 0) + countUnresolved(item.fields ?? []), 0);
