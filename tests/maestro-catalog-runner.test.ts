@@ -12,3 +12,8 @@ test("does not invent component names from prose",async()=>{
  assert.equal(result.status,"needs_component_review");
  assert.equal(result.results.length,0);
 });
+
+test("extracts fenced JSON without interpreting arbitrary prose",()=>{
+ const block={type:"text",text:"Evidence:\\n"+String.fromCharCode(96).repeat(3)+"json\\n"+JSON.stringify({sections:[{componentType:"hero"},{resourceType:"site/components/banner"}]})+"\\n"+String.fromCharCode(96).repeat(3)};
+ assert.deepEqual(extractComponentQueries([block]),["hero","banner"]);
+});
