@@ -49,7 +49,8 @@
     "hermes:batch-plan": "tsx src/cli-hermes-batch-plan.ts",
     "hermes:batch-resume": "tsx src/cli-hermes-batch-resume.ts",
     "hermes:tasks": "tsx src/cli-hermes-tasks.ts",
-    "hermes:approval": "tsx src/cli-hermes-approval.ts"
+    "hermes:approval": "tsx src/cli-hermes-approval.ts",
+    "hermes:readiness": "tsx src/cli-hermes-readiness.ts"
   },
   "engines": {
     "node": ">=20"
