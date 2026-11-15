@@ -67,3 +67,43 @@ export default organizarDialog(definition);
     assert.ok(result.warnings.some(w => w.reason === "EXPORT_TRANSFORM_NOT_APPLIED:organizarDialog"));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test("resolves local array references, spreads and nested multifields without executing imports", async () => {
+  const root = await mkdtemp(join(tmpdir(), "maestro-arrays-"));
+  try {
+    const folder = join(root, "src/frontend/components/principal/cards/v1");
+    await mkdir(folder, { recursive: true });
+    await writeFile(join(folder, "definition.ts"), `
+import { importedFields } from "./dangerous";
+const INNER_FIELDS = [{ name: "title", label: "Título", type: "text" }];
+const CARD_FIELDS = [{ name: "details", label: "Detalhes", type: "multifield", fields: INNER_FIELDS }];
+const EXTRA = [...CARD_FIELDS];
+const definition: ComponentDefinition = {
+  modelId: "principal--cards", name: "cards", version: "v1", group: "principal",
+  title: "Cards", description: "Cards", icon: "grid",
+  fields: [...EXTRA, { name: "items", label: "Itens", type: "multifield", fields: CARD_FIELDS }, ...importedFields]
+};
+export default definition;
+`);
+    const result = await scanHermesComponentCatalog(root);
+    assert.equal(result.total, 1);
+    assert.equal(result.components[0].fields[0].fields?.[0].name, "title");
+    assert.equal(result.components[0].fields[1].fields?.[0].fields?.[0].name, "title");
+    assert.equal(result.components[0].unresolvedFields, 1);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("circular local array references remain unresolved", async () => {
+  const root = await mkdtemp(join(tmpdir(), "maestro-circular-"));
+  try {
+    const folder = join(root, "src/frontend/components/principal/circular/v1");
+    await mkdir(folder, { recursive: true });
+    await writeFile(join(folder, "definition.ts"), `
+const A = [...B];
+const B = [...A];
+const definition: ComponentDefinition = { name: "circular", version: "v1", group: "principal", fields: [...A] };
+`);
+    const result = await scanHermesComponentCatalog(root);
+    assert.equal(result.components[0].unresolvedFields, 1);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
