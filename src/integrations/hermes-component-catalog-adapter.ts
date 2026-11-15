@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
-import { join, relative, resolve, sep } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 export type CatalogField = {
   name: string | null; label: string | null; type: string | null;
