@@ -51,7 +51,8 @@
     "hermes:tasks": "tsx src/cli-hermes-tasks.ts",
     "hermes:approval": "tsx src/cli-hermes-approval.ts",
     "hermes:readiness": "tsx src/cli-hermes-readiness.ts",
-    "hermes:workspace": "tsx src/cli-hermes-workspace.ts"
+    "hermes:workspace": "tsx src/cli-hermes-workspace.ts",
+    "hermes:git-plan": "tsx src/cli-hermes-git-plan.ts"
   },
   "engines": {
     "node": ">=20"
