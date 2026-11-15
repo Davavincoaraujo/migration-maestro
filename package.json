@@ -43,6 +43,7 @@
     "integration:doctor": "tsx src/cli-integration-doctor.ts",
     "integration:smoke": "tsx src/cli-maestro-integration-smoke.ts",
     "agent:plan": "tsx src/cli-maestro-agent-planning.ts",
+    "orchestration:view": "tsx src/cli-maestro-orchestration-view.ts",
     "hermes:acp-check": "tsx src/cli-hermes-acp-check.ts",
     "hermes:acp-handshake": "tsx src/cli-hermes-acp-handshake.ts",
     "hermes:acp-session": "tsx src/cli-hermes-acp-session.ts",
