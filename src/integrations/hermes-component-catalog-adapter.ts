@@ -11,6 +11,7 @@ export type CatalogComponent = {
   modelId: string | null; title: string | null; description: string | null;
   icon: string | null; singleton: boolean | null; minDsVersion: string | null;
   fields: CatalogField[]; unresolvedFields: number; hasMapper: boolean; path: string;
+  exportTransform: "direct" | "organizarDialog" | "other";
 };
 export type CatalogScan = {
   mode: "read-only"; source: string; total: number; components: CatalogComponent[];
@@ -127,6 +128,9 @@ function parse(content: string, path: string, hasMapper: boolean): CatalogCompon
   if (!name || !group || !version) throw Error("MISSING_COMPONENT_IDENTITY");
   const fieldList = fields(property(obj, "fields"), constants);
   const singleton = property(obj, "singleton");
+  const exported = source.statements.find(s => ts.isExportAssignment(s)) as ts.ExportAssignment | undefined;
+  const exportTransform = exported && ts.isCallExpression(exported.expression) && ts.isIdentifier(exported.expression.expression) && exported.expression.expression.text === "organizarDialog"
+    ? "organizarDialog" : exported && ts.isIdentifier(exported.expression) && exported.expression.text === "definition" ? "direct" : "other";
   return {
     key: group + "/" + name + "@" + version, name, group, version,
     modelId: literal(property(obj, "modelId"), constants),
@@ -136,7 +140,7 @@ function parse(content: string, path: string, hasMapper: boolean): CatalogCompon
     singleton: singleton?.kind === ts.SyntaxKind.TrueKeyword ? true :
       singleton?.kind === ts.SyntaxKind.FalseKeyword ? false : null,
     minDsVersion: literal(property(obj, "minDsVersion"), constants),
-    fields: fieldList, unresolvedFields: countUnresolved(fieldList), hasMapper, path
+    fields: fieldList, unresolvedFields: countUnresolved(fieldList), hasMapper, path, exportTransform
   };
 }
 export async function scanHermesComponentCatalog(portalDirectory: string): Promise<CatalogScan> {
@@ -179,6 +183,7 @@ export async function scanHermesComponentCatalog(portalDirectory: string): Promi
     if (seen.has(item.key)) warnings.push({ path: item.path, reason: "DUPLICATE_KEY:" + item.key });
     seen.add(item.key);
     if (item.unresolvedFields) warnings.push({ path: item.path, reason: "UNRESOLVED_FIELDS:" + item.unresolvedFields });
+    if (item.exportTransform !== "direct") warnings.push({ path: item.path, reason: "EXPORT_TRANSFORM_NOT_APPLIED:" + item.exportTransform });
   }
   return { mode: "read-only", source: root, total: found.length, components: found, warnings };
 }
