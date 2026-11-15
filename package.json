@@ -47,7 +47,8 @@
     "hermes:acp-prompt": "tsx src/cli-hermes-acp-prompt.ts",
     "hermes:acp-artifact": "tsx src/cli-hermes-acp-artifact.ts",
     "hermes:batch-plan": "tsx src/cli-hermes-batch-plan.ts",
-    "hermes:batch-resume": "tsx src/cli-hermes-batch-resume.ts"
+    "hermes:batch-resume": "tsx src/cli-hermes-batch-resume.ts",
+    "hermes:tasks": "tsx src/cli-hermes-tasks.ts"
   },
   "engines": {
     "node": ">=20"
