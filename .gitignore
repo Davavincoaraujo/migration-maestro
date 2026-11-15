@@ -13,3 +13,7 @@ local-output/
 # Local requirement examples may contain internal business specifications
 requirements.local.json
 *.local.requirements.json
+
+# Local Hermes plans, approvals and workspace manifests
+.maestro-checkpoints/
+.maestro-workspaces/
