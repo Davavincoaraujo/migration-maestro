@@ -7,6 +7,6 @@ export function authorizeTool(task: TaskDefinition, toolId: string, tools: Reado
   if (!tool) return {allowed:false,reason:"TOOL_NOT_REGISTERED"};
   if (tool.effect==="read" && !task.requiresApproval) return {allowed:true};
   if (approval?.state==="rejected") return {allowed:false,reason:"APPROVAL_REJECTED"};
-  if (approval?.state==="approved" && approval.taskId===task.id && approval.runId===runId && approval.actorId) return {allowed:true};
+  if (approval?.state==="approved" && approval.taskId===task.id && approval.runId===runId && approval.actorId && approval.decidedAt) return {allowed:true};
   return {allowed:false,reason:"APPROVAL_REQUIRED"};
 }
