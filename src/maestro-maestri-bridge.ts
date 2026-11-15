@@ -9,6 +9,7 @@ type BridgeResult = {
   url: string;
   analysis: "completed";
   planning: "completed";
+  maestriIntegration: "not_configured" | "connected";
   dispatched: string[];
   executionAuthorized: false;
   publishingAuthorized: false;
@@ -43,7 +44,6 @@ export async function askMaestri(name: string, prompt: string, timeoutMs = 30000
 }
 /** Sends only generic, non-sensitive task instructions to existing Maestri nodes. */
 export async function runMaestriBridge(urlInput: string): Promise<BridgeResult> {
-  requireMaestriSocket(process.env.MAESTRI_SOCKET);
   const url = validatePageUrl(urlInput);
   const analysis = await analyzeUrlViaMcp(process.env.MAESTRO_ANALYTICS_DIR, url);
   if (analysis.stage !== "analyzed") throw Error("MAESTRO_URL_ANALYSIS_UNAVAILABLE");
@@ -52,6 +52,13 @@ export async function runMaestriBridge(urlInput: string): Promise<BridgeResult> 
   if (!planning.plan) throw Error("MAESTRO_PLANNING_UNAVAILABLE");
   const dispatch = createDispatchPreview(planning.plan);
   const dispatched: string[] = [];
+  if (!process.env.MAESTRI_SOCKET) {
+    return {
+      mode: "maestri-local", url, analysis: "completed", planning: "completed",
+      maestriIntegration: "not_configured", dispatched: [],
+      executionAuthorized: false, publishingAuthorized: false
+    };
+  }
   for (const target of targets) {
     const assignment = dispatch.assignments.find(t => t.taskId === target.task)!;
     const prompt = [
@@ -65,7 +72,8 @@ export async function runMaestriBridge(urlInput: string): Promise<BridgeResult> 
     dispatched.push(target.name);
   }
   return {
-    mode: "maestri-local", url, analysis: "completed", planning: "completed", dispatched,
+    mode: "maestri-local", url, analysis: "completed", planning: "completed",
+    maestriIntegration: "connected", dispatched,
     executionAuthorized: false, publishingAuthorized: false
   };
 }
