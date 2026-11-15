@@ -111,7 +111,11 @@ export async function probeHermesSession(executable = "hermes", timeoutMs = 3000
               console.error("[ACP SESSION ERROR]", {
                 code: typeof error.code === "number" ? error.code : "unknown",
                 messageLength: typeof error.message === "string" ? error.message.length : 0,
-                hasData: Object.prototype.hasOwnProperty.call(error, "data")
+                hasData: Object.prototype.hasOwnProperty.call(error, "data"),
+                dataType: Array.isArray(error.data) ? "array" : typeof error.data,
+                dataKeys: error.data && typeof error.data === "object" && !Array.isArray(error.data)
+                  ? Object.keys(error.data as Record<string, unknown>).slice(0, 20)
+                  : []
               });
               if (process.env.MAESTRO_ACP_ERROR_DETAIL === "1") {
                 // Local opt-in only: may contain sensitive provider information.
