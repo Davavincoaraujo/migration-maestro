@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { probeHermesSession } from "../src/adapters/hermes/acp-session.js";
 
-test("session probe validates executable and timeout", () => {
-  assert.rejects(probeHermesSession("hermes; echo unsafe"), /INVALID_SESSION_CONFIG/);
+test("session probe validates executable and timeout", async () => {
+  await assert.rejects(probeHermesSession("hermes; echo unsafe"), /INVALID_SESSION_CONFIG/);
   assert.rejects(probeHermesSession("hermes", 0), /INVALID_SESSION_CONFIG/);
 });
 
