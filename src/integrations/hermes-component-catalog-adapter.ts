@@ -35,6 +35,11 @@ function fields(expr: ts.Expression | undefined, constants: Map<string, string>)
   if (!expr) return [];
   if (!ts.isArrayLiteralExpression(expr)) return [{ name: null, label: null, type: null, unresolved: true }];
   return expr.elements.map(element => {
+    if (ts.isCallExpression(element) && ts.isIdentifier(element.expression) && element.expression.text === "tab" && element.arguments.length === 2) {
+      const name = literal(element.arguments[0], constants);
+      const label = literal(element.arguments[1], constants);
+      if (name && label) return { name, label, type: "tab" };
+    }
     if (!ts.isObjectLiteralExpression(element)) {
       return { name: null, label: null, type: null, unresolved: true };
     }
