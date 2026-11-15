@@ -44,8 +44,11 @@ export async function preflightHermesBranches(
     throw Error("INVALID_BASE_REF");
   const plan = await planHermesGitWorkspaces(tasks, checkpoints, workspaces);
   const target = resolve(targetDirectory);
+  // macOS may resolve /var to /private/var; reject only a symlink at the repository directory itself.
+  const targetInfo = await lstat(target);
+  if (!targetInfo.isDirectory() || targetInfo.isSymbolicLink())
+    throw Error("TARGET_SYMLINK_NOT_ALLOWED");
   const root = await realpath(target);
-  if (root !== target) throw Error("TARGET_SYMLINK_NOT_ALLOWED");
   const marker = join(root, ".maestro-demo-repo");
   const info = await lstat(marker).catch(() => null);
   if (!info || !info.isFile() || info.isSymbolicLink()) throw Error("DEMO_REPOSITORY_MARKER_REQUIRED");
