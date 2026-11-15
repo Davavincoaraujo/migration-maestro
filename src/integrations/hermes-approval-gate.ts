@@ -52,7 +52,7 @@ async function load(path: string, hash: string): Promise<ApprovalGate> {
   if (obj.mode !== "review-only" || obj.codeExecutionAuthorized !== false ||
     obj.batchDigest !== hash || !Array.isArray(obj.records) || !obj.records.every(validRecord))
     throw Error("INVALID_APPROVAL_STORE");
-  return obj as ApprovalGate;
+  return { mode: "review-only", codeExecutionAuthorized: false, batchDigest: hash, records: obj.records as ApprovalRecord[] };
 }
 async function snapshot(tasks: TaskInput[], root: string): Promise<Orchestration> {
   const path = join(root, digest(tasks) + ".state.json");
