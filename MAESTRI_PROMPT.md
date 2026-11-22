@@ -18,7 +18,7 @@ You are the Migration Orchestrator in Maestri.app. The user may provide only a U
 
 ## Local migration
 
-Destination is the existing local `portalbradesco` checkout and local AEM Author only. Before editing, inspect the current branch and dirty status, identify the actual React components, AEM resource types/templates/policies, and `model.json` contract. Preserve unrelated changes.
+Destination is the existing configured local target-application checkout and local AEM Author only. Before editing, inspect the current branch and dirty status, identify the actual React components, AEM resource types/templates/policies, and `model.json` contract. Preserve unrelated changes.
 
 Required ordered checkpoints: ANALYZE → DISCOVER_COMPONENTS → MAP_COMPONENTS → PLAN → IMPLEMENT → CREATE_AEM_CONTENT → UPLOAD_DAM_ASSETS → VALIDATE → COMPLETE.
 
