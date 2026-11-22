@@ -17,3 +17,7 @@ requirements.local.json
 # Local Hermes plans, approvals and workspace manifests
 .maestro-checkpoints/
 .maestro-workspaces/
+
+# Machine-specific agent permissions and workspace paths
+.claude/settings.json
+config/permissions/codex-project.toml
