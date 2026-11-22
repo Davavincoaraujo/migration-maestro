@@ -25,7 +25,7 @@ This validates/persists the request and invokes the local workflow extension of 
 
 ## Actual destination and safeguards
 
-- Code: the existing configured `portalbradesco` checkout and existing Next.js instance.
+- Code: the existing configured target-application checkout and existing Next.js instance.
 - Content: the confirmed local AEM Author only.
 - AEM page/DAM operations: preflight destination absence, then create-only; never overwrite.
 - No duplicate Next.js project or server, no dashboard, no remote publication, push, merge, or credential changes.
