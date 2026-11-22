@@ -1,6 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MemoryCheckpointStore, runCheckpointed, type PipelineStep } from "../src/autopilot/checkpoint-runner.js";
+
+test("pause saves the completed stage and resumes the same full pipeline without replay", async () => {
+  const store = new MemoryCheckpointStore();
+  const calls: string[] = [];
+  const steps = ["analyze", "map-components"].map(id => ({ id, run: async () => { calls.push(id); return { id }; } }));
+  const jobId = "d".repeat(20);
+  const paused = await runCheckpointed(jobId, {}, steps, store, undefined, { pauseAfter: "analyze" });
+  assert.equal(paused.state, "running");
+  assert.deepEqual(paused.completed, ["analyze"]);
+  assert.deepEqual(await runCheckpointed(jobId, {}, steps, store, undefined, { pauseAfter: "analyze" }), paused);
+  const resumed = await runCheckpointed(jobId, {}, steps, store);
+  assert.equal(resumed.state, "awaiting-review");
+  assert.deepEqual(calls, ["analyze", "map-components"]);
+});
 const id = "a".repeat(20);
 test("restarts at the failed step, preserving completed stages", async () => {
   const store = new MemoryCheckpointStore();

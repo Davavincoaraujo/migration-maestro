@@ -6,8 +6,7 @@ Migration Maestro is a **local-first migration orchestration workbench**. It is 
 
 ```mermaid
 flowchart LR
-  U[Local operator] --> D[Local dashboard]
-  D --> O[Migration Maestro orchestrator]
+  U[Maestri.app operator] --> O[Migration Maestro orchestrator]
   O --> Q[Bounded job queue]
   Q --> C[Checkpoint store]
   O --> J[Event journal]
@@ -24,7 +23,7 @@ flowchart LR
 ```mermaid
 sequenceDiagram
   actor Operator
-  participant UI as Local Dashboard
+  participant UI as Maestri.app
   participant Maestro as Orchestrator
   participant Agents as Synthetic Agents
   participant Store as Checkpoints
@@ -62,7 +61,7 @@ The `src/orchestration/agent-graph.ts` module now validates a local agent DAG wi
 
 1. Bind graph nodes to local agent handlers and checkpointed task execution.
 2. Add agent assignment, retries, bounded concurrency and cancellation.
-3. Expose the graph and agent states in the dashboard.
+3. Surface graph and agent state through supported Maestri.app capabilities.
 4. Introduce local MCP transport and read-only metadata adapters with explicit allowlists.
 5. Add opt-in model-provider agents with budget and data controls; keep approval and publishing separate.
 

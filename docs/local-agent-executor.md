@@ -10,7 +10,7 @@ The default rehearsal has five deterministic handlers: discovery, evidence, mapp
 - Completed nodes are reused on retry. Failed nodes can retry without rerunning successful predecessors.
 - A stage completion event is emitted only after the checkpoint has been saved.
 - No GitHub or Azure DevOps adapter, external network transport, LLM invocation, or AEM write.
-- This module is **not yet wired to the dashboard run button**; the dashboard still uses the existing three-stage synthetic evidence pipeline. Future work will expose this separate graph execution in the local UI.
+- This module is a headless local executor with persisted checkpoints; operator status is presented through Maestri.app, not a repository-owned web interface.
 - Do not treat synthetic handler output as migration evidence or approval for publication.
 
 Run `npm run check && npm test` to validate the new module.

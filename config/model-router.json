@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "profiles": [
+    { "provider": "codex", "profile": "ECONOMY", "modelPatterns": ["gpt-*-luna"] },
+    { "provider": "codex", "profile": "BALANCED", "modelPatterns": ["gpt-*-sol", "gpt-*-terra"] },
+    { "provider": "codex", "profile": "ADVANCED", "modelPatterns": ["gpt-*-astra"] },
+    { "provider": "claude-code", "profile": "ECONOMY", "modelPatterns": ["*haiku*"] },
+    { "provider": "claude-code", "profile": "BALANCED", "modelPatterns": ["*sonnet*"] },
+    { "provider": "claude-code", "profile": "ADVANCED", "modelPatterns": ["*opus*", "*fable*", "*mythos*"] }
+  ],
+  "capabilitiesByAgent": {
+    "Analytics": ["analysis", "review", "validation"],
+    "UE-Pattern": ["mapping"],
+    "Hermes": ["planning", "coding"],
+    "Validator": ["validation", "review"]
+  },
+  "prices": null,
+  "usageMetrics": null,
+  "availabilityRule": "A model is routable only when its active Maestri session model, availability and required capabilities are verified. Terminal footer text can identify a selected model but does not prove availability. CLI catalog entries alone are not entitlement or session proof."
+}

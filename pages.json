@@ -1,0 +1,12 @@
+[
+  {
+    "id": "pagina-home",
+    "route": "/home",
+    "components": ["hero", "carousel", "faq"]
+  },
+  {
+    "id": "pagina-produtos",
+    "route": "/produtos",
+    "components": ["banner", "cards", "accordion"]
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "scope": "isolated-synthetic",
+  "maxRisk": "MEDIUM",
+  "agents": [
+    {"agentId":"Analytics","mode":"declared","provider":"codex","modelId":"gpt-6.1-sol","capabilities":["analysis","validation"]},
+    {"agentId":"UE-Pattern","mode":"declared","provider":"codex","modelId":"gpt-6.1-sol","capabilities":["mapping"]},
+    {"agentId":"Hermes","mode":"declared","provider":"codex","modelId":"gpt-6-astra","capabilities":["planning","coding"]}
+  ]
+}

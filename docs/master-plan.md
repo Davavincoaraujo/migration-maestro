@@ -1,3 +1,5 @@
+> Documento histórico preservado. A entrada operacional atual e seus limites estão em [ARCHITECTURE.md](../ARCHITECTURE.md) e [OPERATIONS.md](../OPERATIONS.md).
+
 # Migration Maestro — agreed scope and delivery tracking
 
 Status: early independent prototype, **not** a completed production migration platform.
@@ -33,7 +35,7 @@ One synthetic URL-like input → evidence → component selection → PageCompos
 3. Introduce MCP server with explicit read-only tool allowlist and simulated ue-pattern executor.
 4. Add model routing, metrics, trace/event export, caching and bounded parallel queue.
 5. Add Playwright/Lighthouse adapters and enterprise-only integration contracts for model.json and AEM writer.
-6. Add PostgreSQL/Redis optional deployment, Electron/React dashboard and real provider adapters.
+6. Add optional persistence deployment, Maestri.app provider sessions and real provider adapters; do not build a competing UI.
 7. Validate a single end-to-end pilot in an approved enterprise environment before enabling any writes.
 
 ## Release policy

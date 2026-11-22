@@ -1,3 +1,5 @@
+> Documento histórico preservado. A entrada operacional atual e seus limites estão em [ARCHITECTURE.md](../ARCHITECTURE.md) e [OPERATIONS.md](../OPERATIONS.md).
+
 # Architecture — MVP
 
 Pipeline: discovery → transformation → validation → human review → (future) publishing.

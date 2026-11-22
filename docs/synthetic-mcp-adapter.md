@@ -10,6 +10,6 @@ Unknown jobs and unsupported write tools return sanitized failures. The adapter 
 
 ## Next integration prerequisites
 
-A real MCP transport and external adapters require a separate, explicit authorization boundary, authentication, allowlisted tenant/repository IDs, credential isolation, request/response size limits, timeouts, rate limits, audit logs, and review of the data exposure contract. The local dashboard approval does not grant remote access or publication permission.
+A real MCP transport and external adapters require a separate, explicit authorization boundary, authentication, allowlisted tenant/repository IDs, credential isolation, request/response size limits, timeouts, rate limits, audit logs, and review of the data exposure contract. A Maestri.app review does not grant remote access or publication permission.
 
 Run `npm run check && npm test` locally.

@@ -1,0 +1,15 @@
+
+[
+  {
+    "id": "analise-home",
+    "route": "/home",
+    "components": ["hero", "carousel", "faq"],
+    "dependsOn": []
+  },
+  {
+    "id": "analise-produtos",
+    "route": "/produtos",
+    "components": ["banner", "cards", "accordion"],
+    "dependsOn": ["analise-home"]
+  }
+]

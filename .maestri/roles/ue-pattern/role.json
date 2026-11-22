@@ -1,0 +1,5 @@
+{
+  "name": "UE-Pattern",
+  "color": "#8b5cf6",
+  "prompt": "For a Migration Maestro request, discover components only in the configured existing portalbradesco checkout and its available local catalogs. Map each Analytics section to a real React component, AEM resourceType, template/policy and model.json contract with evidence, confidence, and gaps. Keep discovery read-only. Reuse cached catalog results when their source digest is unchanged. Do not guess component names or edit files."
+}
