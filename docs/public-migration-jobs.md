@@ -1,11 +1,13 @@
 # Descoberta pública por URL
 
+> URLs abaixo são exemplos fictícios para documentação; não representam o allowlist de implementações legadas.
+
 Comando no repositório: `npm run maestro -- migrate <URL>`.
 O pacote também registra o executável `maestro` em `bin/maestro.mjs` para
 instalações que exponham os executáveis do pacote.
 
 A primeira página aprovada é
-`https://banco.bradesco/html/classic/atendimento/atendimento.shtm`.
+`https://example.com/legacy/support`.
 A descoberta usa um GET HTTPS, exige DNS IPv4 público, não segue redirects,
 aceita apenas HTML até 2 MB e não busca recursos ou links. Scripts são analisados
 apenas como marcadores de integrações; nunca executados. HTML bruto não é gravado.
