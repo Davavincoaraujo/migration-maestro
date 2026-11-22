@@ -27,7 +27,7 @@ As variáveis foram definidas no ambiente da execução, sem alteração de conf
 
 - `MAESTRO_ANALYTICS_DIR`: projeto `migration-analyst` em `~/Developer`.
 - `MAESTRO_UE_PATTERN_DIR`: projeto `ue-pattern` em `~/Developer`.
-- `MAESTRO_COMPONENTS_PROJECT_DIR`: projeto `iibr-fed-portalbradesco` em `~/Developer`.
+- `MAESTRO_COMPONENTS_PROJECT_DIR`: checkout de aplicação de destino configurado localmente.
 
 Comando: `npm run integration:smoke -- hero`.
 
@@ -145,7 +145,7 @@ Nenhuma publicação no AEM, push, merge, alteração global de permissões ou m
 
 ## Piloto da página pública e correção ACP — 2026-11-15
 
-Fonte real: https://banco.bradesco/html/classic/produtos-servicos/emprestimo-e-financiamento/index.shtm
+Fonte real: URL de origem omitida (evidência histórica sanitizada)
 
 Foi reutilizado `analyzeUrlViaMcp`, com a ferramenta real `collect_page_evidence`. As duas capturas retornaram HTTP 200 em sessões novas, sem estado autenticado. O novo perfil `publicPilotWorkflow` estende o controlador existente, preservando lock, recibos, timeouts, polling limitado, hashes, checkpoints e parada em revisão. Não há segundo executor paralelo de etapas.
 
@@ -162,7 +162,7 @@ O modo executado foi exclusivamente público: `metadataAllowed: false`. A prefer
 | Produtos | `#conteudo` | Sete cards estáticos e referências locais | Nenhuma verificada; confiança baixa |
 | Serviços | `section.servicos` | Três cards com placeholders | Nenhuma verificada; confiança baixa |
 | WhatsApp | `section.whatsApp` | Bloco informativo e mídia não funcional | Nenhuma verificada; confiança baixa |
-| Vídeo | `section.bradesco-explica` | Título e placeholder sem player | Nenhuma verificada; confiança baixa |
+| Vídeo | `section.example-video` | Título e placeholder sem player | Nenhuma verificada; confiança baixa |
 | Simulação | `.qrcode` | QR placeholder e referência local, sem simulador | Nenhuma verificada; confiança baixa |
 
 Os produtos públicos identificados foram crédito pessoal, crédito rápido, crédito consignado, limite da conta, crédito imobiliário, crédito pessoal com garantia de imóvel e financiamento de veículos. Duplicações responsivas foram deduplicadas. Navegação global, login, busca, consentimento e tracking foram excluídos da implementação. Nenhum contrato AEM foi inferido.
