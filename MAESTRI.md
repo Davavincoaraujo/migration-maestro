@@ -28,15 +28,15 @@ The intake command validates and persists the request, then invokes the existing
 - Run `npm run model-router:inspect` before model work. Route deterministic file checks, tests, builds, HTTP checks, and parsing without an AI call.
 - The router selects only visible, available, authorized Maestri sessions. It prefers the configured specialist for the stage, then uses a compatible active session. A fallback is recorded. CLI model catalogs are not proof of account entitlement.
 - ECONOMY, BALANCED, and ADVANCED are target profiles. Never fabricate a model, price, token count, or active session. Do not change a live session's model.
-- Analytics inventories the public source; UE-Pattern maps it to real portal components; Hermes implements in the existing authorized `portalbradesco` checkout; Validator independently checks results; the coordinator handles the local AEM Author integration.
+- Analytics inventories the public source; UE-Pattern maps it to real portal components; Hermes implements in the existing authorized target application checkout; Validator independently checks results; the coordinator handles the local AEM Author integration.
 - Before AEM writes, verify the target is absent. Use create-only page and DAM operations. Never overwrite an existing page or asset. Use only existing local authentication and never print secrets.
-- Preserve project changes and branches. Use the existing `portalbradesco` project and its current Next.js server; do not start a duplicate server or create a second project.
+- Preserve project changes and branches. Use the existing configured target application and its current Next.js server; do not start a duplicate server or create a second project.
 - Retry only bounded transient failures. Infrastructure failures do not trigger model escalation. Resume from the durable checkpoint and do not repeat a confirmed AEM create/upload.
 - Tests, builds, local HTTP and browser verification must have captured output before they are reported as passed. Human review remains required for visual gaps or uncertain media behavior.
 - No remote push, merge, publication, credential changes, destructive overwrite, or work outside explicitly configured local directories.
 
 ## Current capability facts
 
-`npm run autopilot:central` is the checkpointed synthetic Maestri demonstration, not the `portalbradesco` production executor. `autopilot:intake` now invokes the local workflow extension; its real end-to-end acceptance remains blocked by host permissions/authentication. Do not report an unexecuted stage as completed. The default central demo remains synthetic.
+`npm run autopilot:central` is the checkpointed synthetic Maestri demonstration, not the production executor for any specific organization. `autopilot:intake` now invokes the local workflow extension; its real end-to-end acceptance remains blocked by host permissions/authentication. Do not report an unexecuted stage as completed. The default central demo remains synthetic.
 
 See `docs/maestri-primary-interface.md` for activation and current limitations.
