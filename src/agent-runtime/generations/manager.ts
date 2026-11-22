@@ -75,6 +75,11 @@ export class RuntimeGenerationManager {
     return join(this.root,'candidates',id);
   }
   private async base(){return readEnvelope<{installation:Installation;approvalPublicKey:string}>(join(this.root,'base.json'));}
+  async trustedApprovalPublicKey() {
+    const key=(await this.base()).approvalPublicKey;
+    if(createPublicKey(key).asymmetricKeyType!=='ed25519')throw Error('GENERATION_APPROVER_KEY_INVALID');
+    return key;
+  }
   async initialize(configPath:string,approvalPublicKey:string) {
     if(createPublicKey(approvalPublicKey).asymmetricKeyType!=='ed25519')throw Error('GENERATION_APPROVER_KEY_INVALID');
     const installation=await inspectInstallation(configPath);

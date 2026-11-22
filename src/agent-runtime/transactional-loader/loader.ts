@@ -1,11 +1,12 @@
 import { createPublicKey, randomUUID, verify } from 'node:crypto';
-import { lstat, mkdir, open, readFile, realpath, rename, rm, readdir } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, realpath, rename, readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { canonical, digest, bytesDigest } from '../contracts.js';
 import { validateNativeConfig } from '../native/service.js';
 import { type Manifest } from '../generations/manager.js';
 import { privateDirectory, regular, syncDirectory } from '../generations/storage.js';
-import { privateEpochLock, RuntimeEpochLease } from './epoch.js';
+import { inspectPersistentLock, privateEpochLock, privatePersistentLock, recoverOrphanLock, RuntimeEpochLease,
+  type SignedOrphanLockAuthorization } from './epoch.js';
 
 export interface ApprovedGeneration {
   version:1;generationId:string;manifestPath:string;manifestDigest:string;
@@ -28,7 +29,10 @@ export class TransactionalGenerationLoader {
   async withEpochLock<T>(work:(current:ActivePointer|null)=>Promise<T>) {
     await privateDirectory(this.root);
     const unlock=await privateEpochLock(this.root);
-    try{return await work(await this.current());}finally{await unlock();}
+    try{
+      if(await this.hasUnresolvedTransactions())throw Error('LOADER_RECOVERY_REQUIRED');
+      return await work(await this.current());
+    }finally{await unlock();}
   }
   /** Revalidate the selected generation contents, not just the active pointer. */
   async verifyActivePointer(pointer:ActivePointer) {
@@ -49,10 +53,7 @@ export class TransactionalGenerationLoader {
     return body;
   }
   private async lock() {
-    const path=join(this.root,'activation.lock');
-    try{await mkdir(path,{mode:0o700});}
-    catch(e){if((e as NodeJS.ErrnoException).code==='EEXIST')throw Error('LOADER_ACTIVATION_LOCKED_REVIEW_REQUIRED');throw e;}
-    return async()=>{await rm(path,{recursive:true});await syncDirectory(this.root);};
+    return privatePersistentLock(this.root,'activation.lock');
   }
   async current():Promise<ActivePointer|null> {
     try{
@@ -174,6 +175,23 @@ export class TransactionalGenerationLoader {
     try{await handle.writeFile(JSON.stringify(value,null,2)+'\n');await handle.sync();}finally{await handle.close();}
     await syncDirectory(dirname(path));
   }
+  private async hasUnresolvedTransactions() {
+    let names:string[];
+    try{names=(await readdir(this.transactionPath())).filter(n=>n.endsWith('.json')&&!n.endsWith('.commit.json')&&!n.endsWith('.abort.json'));}
+    catch(e){if((e as NodeJS.ErrnoException).code==='ENOENT')return false;throw e;}
+    for(const name of names) {
+      const tx=JSON.parse((await regular(join(this.transactionPath(),name))).toString()) as Tx;
+      if(tx.version!==1||!/^([a-f0-9-]{36})\.json$/.test(name)||name!==tx.id+'.json')throw Error('LOADER_TRANSACTION_INVALID');
+      const markers=await Promise.all(['.commit.json','.abort.json'].map(async suffix=>{
+        try{await regular(join(this.transactionPath(),tx.id+suffix));return true;}catch(e){if((e as NodeJS.ErrnoException).code==='ENOENT')return false;throw e;}
+      }));
+      if(!markers.some(Boolean))return true;
+    }
+    return false;
+  }
+  async recoverOrphanLock(authorization:SignedOrphanLockAuthorization,publicKey:string) {
+    return recoverOrphanLock(this.root,authorization,publicKey);
+  }
   /** Called by every IPC request. A process with an old token fails after pointer swap. */
   async assertCurrent(token:{generationId:string;epoch:number;manifestDigest:string}) {
     const current=await this.current();
@@ -183,9 +201,8 @@ export class TransactionalGenerationLoader {
   /** Read-only crash classifier. It never steals a stale OS lock or deletes evidence. */
   async inspectRecovery() {
     const current=await this.current(),pointerDigest=current?digest(current):null;
-    const lockPath=join(this.root,'activation.lock');
-    let lockPresent=false;try{await lstat(lockPath);lockPresent=true;}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
-    let epochLockPresent=false;try{await lstat(join(this.root,'epoch.lock'));epochLockPresent=true;}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
+    let lockPresent=false,activationOwner=null;try{const st=await lstat(join(this.root,'activation.lock'));lockPresent=st.isDirectory()&&!st.isSymbolicLink();activationOwner=await inspectPersistentLock(this.root,'activation.lock');}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
+    let epochLockPresent=false,epochOwner=null;try{const st=await lstat(join(this.root,'epoch.lock'));epochLockPresent=st.isDirectory()&&!st.isSymbolicLink();epochOwner=await inspectPersistentLock(this.root,'epoch.lock');}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
     let names:string[]=[];
     try{names=(await readdir(this.transactionPath())).filter(n=>n.endsWith('.json')).sort();}
     catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
@@ -201,7 +218,7 @@ export class TransactionalGenerationLoader {
         pointerDigest===tx.expectedPointerDigest?'PREPARED_POINTER_UNCHANGED':'CONFLICT_REQUIRES_REVIEW';
       transactions.push({id:tx.id,phase:tx.phase,classification});
     }
-    return {current,pointerDigest,lockPresent,epochLockPresent,transactions,
+    return {current,pointerDigest,lockPresent,activationOwner,epochLockPresent,epochOwner,transactions,
       recoveryRequired:lockPresent||epochLockPresent||transactions.some(t=>!['COMMITTED'].includes(t.classification)),
       action:lockPresent||epochLockPresent?'verify-owning-process-is-dead; preserve lock and all evidence':
         'review-classification-and-authorize-recovery-explicitly'};
