@@ -7,7 +7,7 @@ O Maestro agora pode consultar **metadados de páginas filhas diretas** de uma r
 Use um usuário de AEM com acesso **somente leitura**, autorizado pela equipe responsável. No terminal da mesma máquina onde roda o AEM:
 
 ```bash
-export MAESTRO_AEM_AUTHOR_URL="http://localhost:4502/sites.html/content/portal-banco-bradesco"
+export MAESTRO_AEM_AUTHOR_URL="http://localhost:4502/sites.html/content/example-site"
 export MAESTRO_AEM_USER="SEU_USUARIO_DE_LEITURA"
 read -s MAESTRO_AEM_PASSWORD
 export MAESTRO_AEM_PASSWORD
