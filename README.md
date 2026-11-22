@@ -1,5 +1,10 @@
 # Migration Maestro
 
+> Projeto genérico de orquestração de migração de páginas para React/Next.js + AEM. Não contém dependências de um cliente específico.
+
+**[Visão geral, fluxograma, integrações e canvas fictício do Maestri.app](docs/README.md)**
+
+
 Orquestração local de Analytics, UE-Pattern e Hermes pelo Maestri. O coordenador
 possui despacho durável, validação de artefatos, checkpoints e revisão humana.
 React/Next.js continua sendo o renderizador alvo; AEM continua sendo fonte de conteúdo.
