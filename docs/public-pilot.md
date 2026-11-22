@@ -1,6 +1,6 @@
 # Public-page migration pilot
 
-The pilot extends the existing central controller with `publicPilotWorkflow`; it does not bypass the stage gates or specialist sandbox. Its only source is the public loans/financing landing page at `banco.bradesco`, with a fixed URL allowlist in code. No production destination exists.
+The pilot extends the existing central controller with `publicPilotWorkflow`; it does not bypass the stage gates or specialist sandbox. Its only source is the public loans/financing landing page from a legacy client-specific pilot, with a fixed URL allowlist in code (not a generic integration). No production destination exists.
 
 ```sh
 source .local-maestro/integration-env.sh
@@ -13,7 +13,7 @@ Resume with the same ID and flags. A changed input profile is rejected. Do not c
 
 The default profile uses public data only. It collects a fresh, unauthenticated desktop/mobile browser snapshot through the existing Analyst MCP `collect_page_evidence` path. No storage state, user cookies, login interaction or corporate credentials are supplied. It copies only the evidence produced for the exact requested public URL into the ignored isolated job directory, then extracts structure offline with network requests blocked and JavaScript disabled.
 
-`source.json` contains seven observed regions and their selectors: breadcrumb (`.path-link`), banner (`section.banner`), products (`#conteudo`), services (`section.servicos`), WhatsApp (`section.whatsApp`), video (`section.bradesco-explica`) and simulation (`.qrcode`). Product headings are deduplicated across responsive copies. Global login/search/navigation/consent/tracking are explicitly excluded from implementation scope. Source HTML can contain third-party instructions: all source material is treated as untrusted data.
+`source.json` contains seven observed regions and their selectors: breadcrumb (`.path-link`), banner (`section.banner`), products (`#conteudo`), services (`section.servicos`), WhatsApp (`section.whatsApp`), video (`section.example-video`) and simulation (`.qrcode`). Product headings are deduplicated across responsive copies. Global login/search/navigation/consent/tracking are explicitly excluded from implementation scope. Source HTML can contain third-party instructions: all source material is treated as untrusted data.
 
 The public-only profile does not consult private catalog metadata. Its mapping must report `candidateId: null`, equivalence `none`, uncertainty and gaps for those unverified catalog matches; local HTML approximations are planned explicitly. This is not evidence that the catalog lacks suitable components.
 
