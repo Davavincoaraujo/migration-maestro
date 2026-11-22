@@ -1,15 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import { admissionRequest } from './agent-runtime/native/admission-client.js';
 import { RuntimeGenerationManager } from './agent-runtime/generations/manager.js';
+import { TransactionalGenerationLoader } from './agent-runtime/transactional-loader/loader.js';
 
 try {
   const [command,...args]=process.argv.slice(2);
-  const usage='Usage: node --import tsx src/cli-runtime-generations.ts <initialize|prepare|status|admission-status|recover|request-drain|mark-ready|activate|request-rollback|rollback> --root ABSOLUTE_PATH [--config FILE --approver-key FILE | --candidate FILE | --approval FILE | --report FILE] [--sequence N]';
+  const usage='Usage: node --import tsx src/cli-runtime-generations.ts <initialize|prepare|status|admission-status|recover|loader-status|recover-lock|request-drain|mark-ready|activate|request-rollback|rollback> --root ABSOLUTE_PATH [--config FILE --approver-key FILE | --candidate FILE | --approval FILE | --report FILE | --lock LOCK_NAME --authorization FILE] [--sequence N]';
   if(command==='--help'){console.log(usage);}
   else {
     const allowed:Record<string,string[]>={
       initialize:['--config','--approver-key'],prepare:['--candidate','--sequence'],status:[],'admission-status':[],
-      recover:['--sequence'],'request-drain':['--sequence','--approval'],'mark-ready':['--sequence','--report'],
+      recover:['--sequence'],'loader-status':[],'recover-lock':['--lock','--authorization','--manager-root'],
+      'request-drain':['--sequence','--approval'],'mark-ready':['--sequence','--report'],
       activate:['--sequence'],'request-rollback':['--sequence'],rollback:['--sequence','--approval']
     };
     if(!Object.hasOwn(allowed,command))throw Error(usage);
@@ -29,6 +31,14 @@ try {
       case 'prepare':result=await manager.prepare(await json(flags['--candidate']),sequence);break;
       case 'status':result=await manager.status();break;
       case 'recover':result=await manager.recover(sequence);break;
+      case 'loader-status':result=await new TransactionalGenerationLoader(flags['--root']).inspectRecovery();break;
+      case 'recover-lock':{
+        if(!['epoch.lock','activation.lock'].includes(flags['--lock']))throw Error('RUNTIME_LOCK_NAME_INVALID');
+        const authorization=await json(flags['--authorization']);
+        if(authorization?.payload?.lockName!==flags['--lock'])throw Error('RUNTIME_LOCK_RECOVERY_AUTHORIZATION_INVALID');
+        result=await new TransactionalGenerationLoader(flags['--root']).recoverOrphanLock(authorization,
+          await new RuntimeGenerationManager(flags['--manager-root']).trustedApprovalPublicKey());break;
+      }
       case 'admission-status':result=await admissionRequest(await manager.runtimeEndpoint(),'admission-status',{},AbortSignal.timeout(20000));break;
       case 'request-drain':result=await admissionRequest(await manager.runtimeEndpoint(),'drain',
         {sequence,approval:await json(flags['--approval'])},AbortSignal.timeout(20000));break;

@@ -916,29 +916,22 @@ serviço real.
 
 ### Por que ativação continua bloqueada
 
-`NativeAdmissionFence.execute` e o Native IPC atual ainda **não leem active.json
-nem validam epoch/fencing token em cada request**. `NativeService` também ainda
-inicia pela configuração fornecida e não resolve config/adapters através do loader.
-A interface de callback `liveFence` é um ponto de integração, não uma capacidade
-emitida pelo runtime existente. Um caller poderia implementá-la incorretamente;
-por isso nenhuma ativação real deve chamar o loader nesta versão. O
-`RuntimeGenerationManager.activate` continua falhando fechado.
+`RuntimeEpochLease.run` mantém o lock entre processos durante a validação do ponteiro,
+manifesto e drivers e a execução de cada operação IPC. `serveNativeRuntimes` aplica
+essa lease quando ela é fornecida e recusa `generationManager` sem lease. Porém, o CLI
+`serve --generation-root` ainda não constrói um loader/lease aprovado, e não resolve a
+configuração exclusivamente pelo ponteiro ativo. A API de loader tampouco conclui
+`ACTIVATED` no journal do manager. Por esses motivos a ativação real continua bloqueada.
 
-A exclusividade entre dois escritores do ponteiro foi testada em processos
-separados. Ainda não está comprovado que um processo Native antigo deixa de aceitar
-requests no mesmo instante do rename. O método `assertCurrent` implementa a
-checagem que cada handler deverá fazer, mas ela ainda não foi integrada atomicamente
-à admissão, e a conexão do servidor ao socket permite que processos antigos
-mantenham handlers. Portanto, não afirmamos ausência de duas gerações servindo
-simultaneamente.
-
-Locks não têm expiração nem remoção automática. Após crash, `activation.lock`
-persiste e bloqueia novas escritas. `inspectRecovery` classifica o estado sem
-escrever; remover/renomear o lock exige procedimento de operador que prove a
-morte do processo dono e revisão do journal/ponteiro. O runtime ativo não tem
-essa identidade de lock nem a API administrativa foi adicionada. Persistência
-usa rename/fsync no mesmo filesystem local; garantias de durabilidade variam
-por filesystem/host e não foram testadas em power loss real.
+Locks persistentes agora registram PID, host e ownerId. `inspectRecovery` apenas mostra
+essa identidade. `recover-lock` exige uma autorização Ed25519 vinculada ao owner e
+expiração válida, confirma localmente que `kill(pid, 0)` retorna `ESRCH`, e renomeia o
+diretório para `orphan-locks/`, preservando owner e autorização. `EPERM`, PID ativo,
+host diferente, owner alterado ou metadados ausentes bloqueiam a ação. Não há limpeza
+por timeout. A liberação autorizada de um lock, por si só, não reconcilia uma transação
+incompleta; o loader bloqueia requests quando encontra journal de transação sem marcador
+final. Persistência usa rename/fsync no filesystem local; durabilidade sob queda de
+energia e em todos os filesystems não foi comprovada.
 
 ### Integração ainda necessária antes de aprovar uma migração
 
@@ -1016,3 +1009,36 @@ Somente então inicie uma instância com suporte a lease e valide o epoch. Locks
 claims pendentes ou sessões remotas sem resultado exigem revisão explícita; timeout e
 fechamento de conexão não provam cancelamento remoto. Este procedimento não foi
 executado e não autoriza ativação.
+
+### Inspeção e recuperação autorizada de lock órfão
+
+A recuperação de lock é separada da recuperação do commit. Primeiro inspecione sem
+mutação:
+
+```sh
+node --import tsx src/cli-runtime-generations.ts loader-status \
+  --root "$HOME/.migration-maestro-generations/loader"
+```
+
+`activationOwner` e `epochOwner` mostram PID, host, ownerId e timestamp. Gere uma
+aprovação Ed25519 fora do serviço usando a autoridade configurada no `base.json` do
+Generation Manager, vinculando exatamente esses campos, o nome do lock,
+o digest do objeto owner, `approvedBy` e `expiresAt`. O processo precisa estar no
+mesmo host e `kill(pid, 0)` precisa retornar `ESRCH`; PID ativo, `EPERM`, host diferente
+ou ausência de owner impedem a recuperação. O comando arquiva o diretório original e a
+autorização assinada, sem apagar o registro:
+
+```sh
+node --import tsx src/cli-runtime-generations.ts recover-lock \
+  --root "$HOME/.migration-maestro-generations/loader" \
+  --manager-root "$HOME/.migration-maestro-generations/manager" \
+  --lock epoch.lock \
+  --authorization /CAMINHO/ABSOLUTO/orphan-lock-authorization.json
+```
+
+Use `activation.lock` somente se esse for o lock inspecionado e autorizado. Liberar um
+lock órfão **não** reconcilia journal e ponteiro: uma transação sem marcador final faz
+`withEpochLock` responder `LOADER_RECOVERY_REQUIRED`. Não reinicie o runtime nem remova
+transações, claims, journals ou checkpoints para contornar esse bloqueio. A reconciliação
+transacional manager/loader e o bootstrap que emite a lease ainda precisam ser
+implementados antes de `activate` ser habilitado.

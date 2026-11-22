@@ -69,6 +69,7 @@ test('crash before pointer rename preserves prior generation and leaves recovera
  assert.deepEqual(await crash.current(),first);
  const state=await f.loader.inspectRecovery();assert.equal(state.recoveryRequired,true);
  assert.ok(state.transactions.some(tx=>tx.classification==='PREPARED_POINTER_UNCHANGED'));
+ await assert.rejects(f.lease.run(async()=>{}),/LOADER_RECOVERY_REQUIRED/);
 });
 test('crash after atomic pointer rename is classified new-active, never rolls pointer back',async t=>{
  const f=await fixture(t,()=>{throw Error('simulated crash after pointer swap');});
@@ -77,6 +78,12 @@ test('crash after atomic pointer rename is classified new-active, never rolls po
  const pointer=await f.loader.current();assert.equal(pointer?.generationId,f.manifest.id);
  const state=await f.loader.inspectRecovery();
  assert.equal(state.transactions[0].classification,'POINTER_SWAPPED_AUDIT_INCOMPLETE');
+ await assert.rejects(f.lease.run(async()=>{}),/LOADER_RECOVERY_REQUIRED/);
+});
+test('invalid active pointer blocks Native Runtime startup validation',async t=>{
+ const f=await fixture(t);
+ await writeFile(join(f.root,'loader','active.json'),JSON.stringify({...f.baseline,epoch:0}));
+ await assert.rejects(f.lease.validateStartup(),/LOADER_POINTER_INVALID/);
 });
 test('separate Node processes serialize epoch leases and stale token is rejected after swap',async t=>{
  const f=await fixture(t),log=join(f.root,'locks.jsonl'),worker=join(process.cwd(),'scripts/epoch-lock-worker.mjs');
@@ -129,6 +136,34 @@ test('a crashed process leaves a persistent fail-closed epoch lock',async t=>{
  assert.equal(exit,77);
  await assert.rejects(f.loader.withEpochLock(async()=>{}),/RUNTIME_EPOCH_LOCKED_REVIEW_REQUIRED/);
  assert.equal((await f.loader.inspectRecovery()).recoveryRequired,true);
+});
+test('orphan lock recovery requires a signed operator authorization and preserves the lock evidence',async t=>{
+ const f=await fixture(t),log=join(f.root,'orphan.jsonl'),worker=join(process.cwd(),'scripts/epoch-lock-worker.mjs');
+ const child=spawn(process.execPath,['--import','tsx',worker,join(f.root,'loader'),log,'crash'],{stdio:['ignore','ignore','pipe']});
+ await new Promise<number|null>((resolve,reject)=>{child.on('error',reject);child.on('close',resolve);});
+ const owner=(await f.loader.inspectRecovery()).epochOwner!;
+ const authorizationPayload={version:1 as const,lockName:'epoch.lock',ownerDigest:digest(owner),pid:owner.pid,
+  host:owner.host,ownerId:owner.ownerId,approvedBy:'operator',expiresAt:new Date(Date.now()+60000).toISOString()};
+ const publicKey=f.keys.publicKey.export({format:'pem',type:'spki'}).toString();
+ await assert.rejects(f.loader.recoverOrphanLock({payload:authorizationPayload,signature:'invalid'},publicKey),/AUTHORIZATION_INVALID/);
+ assert.ok((await f.loader.inspectRecovery()).epochLockPresent);
+ const authorization={payload:authorizationPayload,signature:sign(null,Buffer.from(canonical(authorizationPayload)),f.keys.privateKey).toString('base64')};
+ const recovered=await f.loader.recoverOrphanLock(authorization,publicKey);
+ assert.equal(recovered.recovered,true);
+ assert.ok(await readFile(join(recovered.evidencePath,'owner.json')));
+ assert.ok(await readFile(recovered.evidencePath+'.authorization.json'));
+ await f.loader.withEpochLock(async()=>{});
+});
+test('a signed orphan-lock authorization cannot remove a lock owned by a live process',async t=>{
+ const f=await fixture(t),publicKey=f.keys.publicKey.export({format:'pem',type:'spki'}).toString();
+ await f.loader.withEpochLock(async()=>{
+  const owner=(await f.loader.inspectRecovery()).epochOwner!;
+  const payload={version:1 as const,lockName:'epoch.lock',ownerDigest:digest(owner),pid:owner.pid,
+   host:owner.host,ownerId:owner.ownerId,approvedBy:'operator',expiresAt:new Date(Date.now()+60000).toISOString()};
+  const authorization={payload,signature:sign(null,Buffer.from(canonical(payload)),f.keys.privateKey).toString('base64')};
+  await assert.rejects(f.loader.recoverOrphanLock(authorization,publicKey),/OWNER_STILL_ACTIVE/);
+  assert.equal((await f.loader.inspectRecovery()).epochLockPresent,true);
+ });
 });
 test('activation authorization callback runs under lock and may veto pointer swap',async t=>{
  const f=await fixture(t),pub=f.keys.publicKey.export({format:'pem',type:'spki'}).toString();
