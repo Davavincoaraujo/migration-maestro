@@ -22,6 +22,6 @@ Os arquivos `.mmd` são Mermaid em texto, versionáveis e renderizáveis em visu
 
 Esta primeira entrega é **local e sintética**. O Analytics ainda não realiza entrevistas, extração automática de requisitos de documentos, execução de MCP remoto, geração de código, integração com AEM ou publicação. A CLI recebe um JSON fornecido pelo operador e o valida antes de gerar os artefatos. Os diagramas de sequência são representações genéricas do processo, não sequências inferidas das regras de negócio.
 
-O modelo rejeita IDs duplicados, referências desconhecidas, dependências cíclicas e campos inválidos. Não há aprovação automática. O próximo passo é conectar a especificação validada aos jobs do Maestro e adicionar um editor/visualizador no dashboard, preservando revisão humana e checkpoints.
+O modelo rejeita IDs duplicados, referências desconhecidas, dependências cíclicas e campos inválidos. Não há aprovação automática. O próximo passo é conectar a especificação validada aos jobs do Maestro e apresentar o progresso no Maestri.app, preservando revisão humana e checkpoints.
 
 `npm run check && npm test` valida tipos e testes.

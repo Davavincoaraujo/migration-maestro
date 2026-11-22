@@ -1,0 +1,75 @@
+{
+  "permissions": {
+    "defaultMode": "manual",
+    "additionalDirectories": [
+      "/Users/macos/Developer/iibr-fed-portalbradesco"
+    ],
+    "allow": [
+      "Edit(/src/**)",
+      "Edit(/tests/**)",
+      "Edit(/docs/**)",
+      "Edit(//Users/macos/Developer/iibr-fed-portalbradesco/src/**)",
+      "Edit(//Users/macos/Developer/iibr-fed-portalbradesco/scripts/maestro/**)",
+      "Bash(npm run check)",
+      "Bash(npm test)",
+      "Bash(npm run build)",
+      "Bash(npm run model-router:inspect)",
+      "Bash(maestri list)",
+      "Bash(maestri check *)"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(unlink *)",
+      "Bash(mv *)",
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(git restore *)",
+      "Bash(git checkout *)",
+      "Bash(gh *)",
+      "Bash(curl *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(codex login *)",
+      "Bash(codex logout)",
+      "Bash(claude auth *)",
+      "Edit(/**/.env*)",
+      "Edit(/**/.git/**)",
+      "Edit(/**/.codex/**)",
+      "Edit(/**/.claude/**)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": [
+        "localhost:3000",
+        "localhost:4502",
+        "127.0.0.1:3000",
+        "127.0.0.1:4502"
+      ],
+      "allowLocalBinding": false,
+      "allowAllUnixSockets": false,
+      "allowUnixSockets": [
+        "/var/folders/xq/glpfg2bs4dv41frf1pdnk6l80000gn/T/maestri-ca200b5b/maestri.sock"
+      ]
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/macos/Developer/migration-maestro/scripts/permission-guard.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

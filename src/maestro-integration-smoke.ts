@@ -12,12 +12,12 @@ export type IntegrationSmokeResult = {
   ready: boolean;
 };
 
-export function smokePrompt(analytics: IntegrationStep, uePattern: IntegrationStep): string {
+export function smokePrompt(_analytics: IntegrationStep, _uePattern: IntegrationStep): string {
   return [
     "Teste de integração do Migration Maestro. Não use ferramentas, não acesse arquivos nem execute comandos.",
-    "Responda exatamente: MAESTRO_INTEGRATION_ACK",
-    "Status MCP: " + analytics.status + ". Status UE-Pattern: " + uePattern.status + ".",
-    "Estes status são apenas diagnósticos; não representam conteúdo de projeto."
+    "Este é apenas um teste de resposta literal, sem pedido de relatório ou diagnóstico.",
+    "A resposta inteira deve ser somente os caracteres abaixo, sem Markdown, explicação, prefixo ou sufixo:",
+    "MAESTRO_INTEGRATION_ACK"
   ].join("\n");
 }
 
@@ -51,7 +51,8 @@ export async function runIntegrationSmoke(
   let hermes: IntegrationSmokeResult["hermes"] = { status: "failed", promptCompleted: false, responseMatched: false };
   try {
     const response = await deps.hermes(smokePrompt(analytics, uePattern), "hermes", 120000);
-    const matched = response.promptCompleted && response.responseText?.trim() === "MAESTRO_INTEGRATION_ACK";
+    const matched = response.promptCompleted && response.stopReason === "end_turn" && !response.responseTruncated &&
+      response.serverRequestsDenied === 0 && response.responseText?.trim() === "MAESTRO_INTEGRATION_ACK";
     hermes = {
       status: matched ? "completed" : "failed",
       promptCompleted: response.promptCompleted,

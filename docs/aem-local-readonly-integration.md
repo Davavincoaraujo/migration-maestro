@@ -11,18 +11,16 @@ export MAESTRO_AEM_AUTHOR_URL="http://localhost:4502/sites.html/content/portal-b
 export MAESTRO_AEM_USER="SEU_USUARIO_DE_LEITURA"
 read -s MAESTRO_AEM_PASSWORD
 export MAESTRO_AEM_PASSWORD
-npm run dashboard -- .local-maestro/agent-demo 4177 examples/workbench-jobs.json
 ```
 
-Abra `http://127.0.0.1:4177/aem/pages` para visualizar a lista ou `/aem/pages/data` para o resumo JSON. **Não coloque credenciais em commits, arquivos .env versionados ou mensagens de chat.** Use um usuário de serviço dedicado de leitura, se permitido.
+O acesso é realizado pelo adaptador headless de leitura AEM e pelas ferramentas locais allowlisted. **Não coloque credenciais em commits, arquivos .env versionados ou mensagens de chat.** Use um usuário de serviço dedicado de leitura, se permitido.
 
 ## Limites atuais
 
 - Apenas Author local em `localhost:4502` ou `127.0.0.1:4502`, via HTTP, no caminho `/sites.html/content/...`.
 - Solicitação GET autenticada por Basic Auth a `/content/<raiz>.1.json`, sem redirecionamentos, com tempo limite de 4 segundos e resposta máxima de 500 KiB.
 - Exibe no máximo 100 páginas filhas diretas: identificador, título e indicação de nó de conteúdo. Não busca componentes, páginas descendentes, conteúdo sensível, assets ou dados pessoais.
-- Se o AEM bloquear Basic Auth, exigir SSO ou não expuser o endpoint JSON, o painel exibirá indisponibilidade/autenticação. Não tenta contornar a configuração de segurança.
-- O login em `/aem/status/view` continua sendo apenas teste de conectividade; `/aem/pages` faz a leitura autenticada.
+- Se o AEM bloquear Basic Auth, exigir SSO ou não expuser o endpoint JSON, o adaptador reporta indisponibilidade/autenticação. Não tenta contornar a configuração de segurança.
 - O pipeline de migração continua sintético. Esta integração **não alimenta automaticamente os agentes** e não publica conteúdo.
 
 ## Próximas etapas possíveis

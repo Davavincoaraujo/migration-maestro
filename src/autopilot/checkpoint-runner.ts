@@ -38,11 +38,13 @@ export async function runCheckpointed(
   steps: readonly PipelineStep[],
   store: CheckpointStore,
   onStage?: (stage: string, completed: number, total: number) => void,
+  options: { pauseAfter?: string } = {},
 ): Promise<Checkpoint> {
   if (!/^[a-f0-9]{20}$/.test(jobId)) throw new Error("Invalid job ID");
   if (!steps.length || steps.length > 30 ||
       steps.some(s => !/^[a-z][a-z0-9-]{0,63}$/.test(s.id)) ||
       new Set(steps.map(s => s.id)).size !== steps.length) throw new Error("Invalid pipeline steps");
+  if (options.pauseAfter && !steps.some(s => s.id === options.pauseAfter)) throw new Error("Invalid pause stage");
   const inputDigest = digest(input);
   const existing = await store.get(jobId);
   if (existing && (existing.version !== 1 || existing.inputDigest !== inputDigest ||
@@ -53,6 +55,8 @@ export async function runCheckpointed(
     onStage?.("checkpoint-reused", checkpoint.completed.length, steps.length);
     return checkpoint;
   }
+  // Keep the full pipeline/input identity. A pause is not successful final review.
+  if (options.pauseAfter && checkpoint.completed.includes(options.pauseAfter)) return checkpoint;
   for (const step of steps.slice(checkpoint.completed.length)) {
     try {
       const output = await step.run(input, structuredClone(checkpoint.outputs));
@@ -65,10 +69,11 @@ export async function runCheckpointed(
       checkpoint.state = "running";
       await store.put(checkpoint);
       onStage?.(step.id, checkpoint.completed.length, steps.length);
-    } catch {
+      if (step.id === options.pauseAfter) return structuredClone(checkpoint);
+    } catch (error) {
       checkpoint.state = "failed";
       await store.put(checkpoint);
-      throw new Error("Checkpointed stage failed: " + step.id);
+      throw new Error("Checkpointed stage failed: " + step.id, { cause: error });
     }
   }
   checkpoint.state = "awaiting-review";

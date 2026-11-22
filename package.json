@@ -4,14 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "maestro:runtime": "node --import tsx src/cli-native-runtime.ts",
+    "maestro:team": "node --import tsx src/cli-migration-team.ts",
+    "maestro:discovery:recover": "node --import tsx src/cli-public-discovery-recover.ts",
+    "maestro:isolated:runtime-test": "node --test scripts/isolated-next-runtime.test.mjs",
+    "maestro:isolated": "node --import tsx src/cli-isolated-next-pilot.ts",
+    "maestro:migrate": "node --import tsx src/cli-maestro-migrate-main.ts",
+    "maestro:status": "node --import tsx src/cli-maestro-status.ts",
+    "maestro:resume": "node --import tsx src/cli-maestro-resume.ts",
+    "autopilot:dispatch": "node --import tsx src/cli-autopilot-dispatch.ts",
+    "autopilot:central": "node --import tsx src/cli-autopilot-central.ts",
+    "autopilot:intake": "node --import tsx src/cli-migration-intake.ts",
+    "model-router:inspect": "node --import tsx src/cli-model-router-inspect.ts",
+    "autopilot:pilot": "node --import tsx src/cli-autopilot-pilot.ts",
     "start": "tsx src/cli.ts",
     "metadata:export": "tsx src/cli-export-metadata.ts",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "node --import tsx --test --test-concurrency=4 tests/*.test.ts",
     "check": "tsc --noEmit",
     "metadata:catalog": "tsx src/cli-catalog.ts",
-    "workbench": "tsx src/cli-workbench.ts",
+    "workbench:run": "tsx src/cli-workbench-run.ts",
     "review": "tsx src/cli-review.ts",
-    "dashboard": "tsx src/cli-dashboard.ts",
     "analytics": "tsx src/cli-analytics.ts",
     "analytics:execute": "tsx src/cli-analytics-execute.ts",
     "ue:local": "tsx src/cli-ue-local.ts",
@@ -36,7 +48,6 @@
     "autopilot:execute": "tsx src/cli-autopilot-execute.ts",
     "autopilot:discover": "tsx src/cli-autopilot-discover.ts",
     "maestro": "tsx src/cli-maestro-url.ts",
-    "maestro:web": "tsx src/cli-maestro-web.ts",
     "audit:dead-code": "node scripts/audit-dead-code.mjs",
     "maestri:discover": "tsx src/cli-maestri.ts",
     "hermes": "tsx src/cli-hermes.ts",
@@ -60,14 +71,20 @@
     "hermes:catalog-scan": "tsx src/cli-hermes-catalog-scan.ts",
     "agent:handoff": "tsx src/cli-maestro-planning-handoff.ts",
     "agent:dispatch": "tsx src/cli-maestro-agent-dispatch.ts",
-    "maestri:run": "tsx src/cli-maestri-run.ts"
+    "maestri:run": "tsx src/cli-maestri-run.ts",
+    "autopilot:revalidate": "node --import tsx src/cli-migration-revalidate.ts",
+    "maestro:operate": "node --import tsx src/cli-operational.ts",
+    "build": "tsc -p tsconfig.build.json"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22 <25"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
+  },
+  "bin": {
+    "maestro": "bin/maestro.mjs"
   }
 }

@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import type { AgentAdapter, TaskDefinition } from "../../core/contracts/index.js";
 export interface HermesCliConfig { executable:string; args:string[]; timeoutMs?:number; }
-const safeExecutable=/^[a-zA-Z0-9._/-]{1,256}$/;
+const safeExecutable=/^[a-zA-Z0-9._/@-]{1,256}$/;
 const safeArg=/^[a-zA-Z0-9._/-]{1,256}$/;
 function validate(config:HermesCliConfig):void {
  if(!config||!safeExecutable.test(config.executable)||!Array.isArray(config.args)||config.args.length>12||

@@ -5,7 +5,7 @@ import { executeAnalyticsLocally } from "./analytics/local-executor.js";
 
 const [input, output] = process.argv.slice(2);
 if (!input || !output) {
-  console.error("Usage: npm run analytics:execute -- <specification.json> <dashboard-directory>");
+  console.error("Usage: npm run analytics:execute -- <specification.json> <output-directory>");
   process.exitCode = 1;
 } else {
   try {
