@@ -1,5 +1,7 @@
 # Recuperação da descoberta pública
 
+> URLs abaixo são exemplos fictícios para documentação; não representam o allowlist de implementações legadas.
+
 O fluxo `preparePublicMigrationJob` deriva o ID da URL e retorna o status existente,
 mesmo quando bloqueado. Isso preserva idempotência, mas não oferece retry implícito.
 O job 6c23a49df3f6b1798231 registrou `PUBLIC_SOURCE_DNS_UNAVAILABLE`.
@@ -56,7 +58,7 @@ Formato JSON (substitua os valores pelo HTML real e seu hash):
 ```json
 {
   "version": 1,
-  "url": "https://banco.bradesco/html/classic/atendimento/atendimento.shtm",
+  "url": "https://example.com/legacy/support",
   "operator": "identificação do operador",
   "legitimatelyCaptured": true,
   "capturedAt": "2026-11-19T18:00:00.000Z",
