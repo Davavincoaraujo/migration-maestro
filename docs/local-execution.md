@@ -59,7 +59,7 @@ human review. Structured agent statements alone are not proof of browser results
 Use the installed Node version in `.nvmrc` (22.23.2). Test, intake and router
 scripts use `node --import tsx` to avoid the tsx CLI's extra IPC listener.
 
-Existing checkout: `/Users/macos/Developer/iibr-fed-portalbradesco`.
+Target application checkout: set an authorized local path outside this repository; do not commit machine-specific or client-specific paths.
 Existing Analyst: `/Users/macos/Developer/migration-analyst`.
 The Author must be local HTTP on port 4502. Provide existing authentication only
 through `MAESTRO_AEM_AUTHOR_URL`, `MAESTRO_AEM_USER` and
